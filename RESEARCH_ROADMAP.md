@@ -48,16 +48,16 @@ A meta-learning layer where the agent learns to generate **self-edits** that con
 Two complementary directions, sharing a shared ReSTEM (rejection sampling + SFT) outer loop:
 
 **Direction A: Meta-Regulation (complements Executive Cortex)**
-- `SelfEditPolicy` MLP maps metric state → regulation parameters `[curiosity_beta, lr_mult]`
+- `SelfEditPolicy` MLP maps metric state → regulation parameters `[curiosity_beta, lr_mult, replay_priority_exp, exploration_eps, memory_mix_ratio]`
 - Edits are applied per-window (every K steps); the policy is trained via regression on good edits
 - SEAL sets window-level strategy, Executive Cortex handles step-level dynamics within each window
-- **Verified:** SEAL matches EC heuristic (+12.9% coverage) and beats it (+3.5% improvement)
+- **Verified:** SEAL matches EC heuristic (94.2% ratio, bar ≥ 90%). Beats test within single-seed noise.
 
 **Direction B: Synthetic Experience Generation**
 - ForwardWorldModel generates synthetic `(h, a, h')` rollouts to augment training data
 - Self-edit specifies `[num_steps, noise_scale, mix_ratio]` for the generator
 - Synthetic data mixed into World Model training; outer loop optimizes generation parameters
-- **Verified:** WM prediction error reduced 63.6% vs real-only training
+- **Verified:** WM prediction error reduced 23.7% vs real-only training (bar ≥ 20%)
 
 **Design rule:** Gradient isolation preserved — SelfEditPolicy has its own optimizer, no gradient flows from inner-loop losses into the self-edit generation policy. The ReSTEM outer loop uses binary reward filtering (keep edits with reward ≥ median), followed by SFT regression on the kept edits.
 

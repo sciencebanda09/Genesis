@@ -52,10 +52,12 @@ def _run_seal(episodes=150, max_steps=100, seed=42, warmup=300):
     buf_ms, buf_edits = [], []
     gs = 0
     window_start_cov = env.coverage()
+    agent._original_epsilon = agent.epsilon
     current_edit = policy.generate(np.zeros(8, np.float32))
     scaled_edit = scale_edit(current_edit, REGULATION_EDIT_SPEC)
     agent.policy_net.optim.lr *= np.clip(scaled_edit[1], 0.5, 2.0)
-    seal_beta = float(scaled_edit[0])
+    agent._seal_beta = float(scaled_edit[0])
+    agent.epsilon = lambda: agent._original_epsilon() * float(scaled_edit[3])
 
     for ep in range(episodes):
         obs = env.reset(); agent.reset_hidden()
@@ -72,14 +74,14 @@ def _run_seal(episodes=150, max_steps=100, seed=42, warmup=300):
                 current_edit = policy.generate(ms)
                 scaled_edit = scale_edit(current_edit, REGULATION_EDIT_SPEC)
                 agent.policy_net.optim.lr = 1e-3 * np.clip(scaled_edit[1], 0.5, 2.0)
-                seal_beta = float(scaled_edit[0])
+                agent._seal_beta = float(scaled_edit[0])
                 window_start_cov = cov
 
             hb = agent._h.copy(); a = agent.select_action(obs)
             ns, _, d, _ = env.step(a)
             ir = rnd.normalize(np.array([rnd.intrinsic_reward(ns)]))[0]
             ha = agent._h.copy()
-            agent.store(obs, a, seal_beta * ir, ns, d, hb, ha)
+            agent.store(obs, a, agent._seal_beta * ir, ns, d, hb, ha)
             obs = ns; gs += 1
             if gs > warmup:
                 rnd.update_step(np.array([ns])); agent.update(); wm.update_step(hb, [a], ha)

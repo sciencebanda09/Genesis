@@ -69,6 +69,7 @@ def run(episodes=300, max_steps=200, seed=0, log_path="logs/seal_regulation.json
                     _unpack_edit(best_edit)
                 _apply_edit(agent, curiosity_beta, lr_mult,
                             replay_priority_exp, exploration_eps)
+                agent._seal_curiosity_beta = curiosity_beta
 
             h_before = agent._h.copy()
             action = agent.select_action(obs)
@@ -77,8 +78,8 @@ def run(episodes=300, max_steps=200, seed=0, log_path="logs/seal_regulation.json
             intr_r = rnd.normalize(np.array([intr_r_raw]))[0]
             h_after = agent._h.copy()
 
-            curiosity_w = cortex.curiosity_weights.get("rnd", 1.0)
-            rnd_reward = curiosity_w * intr_r
+            seal_beta = getattr(agent, '_seal_curiosity_beta', 1.0)
+            rnd_reward = seal_beta * intr_r
             agent.store(obs, action, rnd_reward, next_obs, done, h_before, h_after)
             ep_intrinsic += rnd_reward
 
@@ -124,6 +125,13 @@ def _unpack_edit(edit):
 
 def _apply_edit(agent, curiosity_beta, lr_mult, replay_priority_exp, exploration_eps):
     agent.policy_net.optim.lr = agent.policy_net.optim.lr * lr_mult
+    if not hasattr(agent, '_seal_epsilon_fn'):
+        agent._seal_epsilon_fn = agent.epsilon
+    agent._seal_exploration_eps = exploration_eps
+
+    orig_fn = agent._seal_epsilon_fn
+    se = agent._seal_exploration_eps
+    agent.epsilon = lambda: orig_fn() * se
 
 
 if __name__ == "__main__":
