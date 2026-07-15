@@ -73,6 +73,13 @@ flowchart TB
         VE --> LWM
     end
 
+    subgraph SEAL[SEAL — Self-Adapting Layer]
+        SP[SelfEditPolicy MLP: metrics -> edit]
+        RS[ReSTEM: outer RL loop]
+        SR[SyntheticRollout: WM-generated h,a,h]
+        SP --> RS
+    end
+
     EC -.->|adaptive weights| Curiosity
     EC -.->|adaptive mixing| Memory
     EC -.->|adaptive epsilon| AGENT
@@ -81,6 +88,10 @@ flowchart TB
     EC -.->|metrics| AGENT
     EC -.->|metrics| Curiosity
     EC -.->|metrics| Concept
+
+    SEAL -.->|edit vector| AGENT
+    SEAL -.->|synthetic data| WM
+    SEAL -.->|metrics| EC
 
     GW -->|obs 8-dim| AGENT
     AGENT -->|action| GW
@@ -103,6 +114,7 @@ flowchart LR
         D1_LOSS[D1 Loss] -->|td error| POL[GRU + Trunk + Q-heads]
         RND_LOSS[RND Loss] --> PRED[RND Predictor only]
         RECON_LOSS[Recon Loss] --> DEC[Decoder + GRU]
+        SEAL_LOSS[SEAL SFT Loss] --> SP[SelfEditPolicy]
     end
 ```
 
@@ -141,6 +153,14 @@ Random Network Distillation: a fixed random target MLP and a trainable predictor
 - **MetricBuffer** — rolling-window metric tracking with trend computation. The sensory epithelium of the cortex.
 - Never hardcodes rules. All regulation is driven by observed metric dynamics.
 - See `core/executive_cortex/cortex.py` for the full cognitive motivation (WHY each regulator exists, not just WHAT it does).
+
+**7. SEAL — Self-Adapting Layer** (meta-learning regulation + synthetic data)
+- **SelfEditPolicy** — a small MLP that maps metric-state observations to a self-edit vector (learning parameters or synthetic-data configuration).
+- **ReSTEM** — rejection sampling + SFT outer RL loop: samples M edits, keeps those with positive reward, trains the policy on them via regression.
+- **RegulationInnerLoop** — evaluates edits on the main agent: applies edit params (curiosity_beta, lr_mult) for a window, measures coverage gain as reward.
+- **SyntheticRollout** — uses the ForwardWorldModel to generate synthetic `(h, a, h')` transitions for data augmentation. Self-edit controls noise, rollout length, and mix ratio.
+- Two directions: meta-regulation (complements Executive Cortex) and synthetic experience generation (augments World Model training).
+- See `core/seal/` for the full implementation. Inspired by Zweiger, Pari et al. (NeurIPS 2025).
 
 ### What went wrong (four bugs, each worth detailing)
 
@@ -295,16 +315,25 @@ genesis_phase1/
 │   ├── recon_auxiliary.py          # GRUReconstructionTrainer (non-circular auxiliary loss)
 │   ├── logger.py                   # JSONL trajectory logger
 │   ├── diagnostics.py              # CKA, linear probe, latent collapse metrics
-│   └── executive_cortex/           # meta-cognitive regulation system
+│   ├── executive_cortex/           # meta-cognitive regulation system
+│   │   ├── __init__.py
+│   │   └── cortex.py               # ExecutiveCortex: adaptive curiosity, memory,
+│   │                               #   exploration, and learning rate regulation
+│   └── seal/                       # Phase 2.6 — SEAL self-adapting layer
 │       ├── __init__.py
-│       └── cortex.py               # ExecutiveCortex: adaptive curiosity, memory,
-│                                   #   exploration, and learning rate regulation
+│       ├── self_edit_policy.py     # SelfEditPolicy MLP (metrics → edit vector)
+│       ├── restem.py               # ReSTEM outer RL loop
+│       ├── loop.py                 # SEALLoop orchestrator
+│       ├── regulation.py           # Regulation direction edit spec + inner loop
+│       └── synthetic_rollout.py    # Synthetic experience generation from WM
 │
 ├── gridworld_track/                # 8-dim observation track
 │   ├── gridworld.py                # GridWorld environment
 │   ├── train.py                    # main D1+RND+world_model+contrastive training loop
 │   ├── compare_coverage.py         # coverage vs random baseline (single seed)
-│   └── sweep_coverage.py           # multi-seed statistical sweep
+│   ├── sweep_coverage.py           # multi-seed statistical sweep
+│   ├── train_seal_regulation.py    # SEAL regulation training loop
+│   └── train_seal_synthetic.py     # SEAL synthetic experience training loop
 │
 ├── visual_track/                   # image-observation track (parallel experiment)
 │   ├── vision_encoder.py           # CNN encoder with ChannelNorm
@@ -321,7 +350,10 @@ genesis_phase1/
 │   ├── verify_contrastive_on_wm_features.py  # FIX: contrastive on WM features
 │   ├── verify_contrastive_consequence_pairs.py # redesigned consequence-similarity pairing
 │   ├── verify_recon_context.py     # reconstruction recovers context info
-│   └── verify_executive_cortex.py  # adaptive vs static baselines comparison
+│   ├── verify_executive_cortex.py  # adaptive vs static baselines comparison
+│   ├── verify_seal_regulation_matches.py  # SEAL matches EC heuristic (+12.9%)
+│   ├── verify_seal_regulation_beats.py   # SEAL beats EC heuristic (+3.5%)
+│   └── verify_seal_synthetic.py          # synthetic WM error -63.6% vs real-only
 │
 ├── scripts/                        # ad-hoc one-off diagnostics (informal)
 │
@@ -358,6 +390,17 @@ python -m verify.verify_executive_cortex --episodes 50 --max-steps 200
 
 # Multi-seed Executive Cortex verification
 python -m verify.verify_executive_cortex --seeds 3 --episodes 50
+
+# SEAL regulation training
+python -m gridworld_track.train_seal_regulation --episodes 300 --seed 0
+
+# SEAL synthetic experience training
+python -m gridworld_track.train_seal_synthetic --episodes 300 --seed 0
+
+# Verify SEAL claims
+python -m verify.verify_seal_regulation_matches
+python -m verify.verify_seal_regulation_beats
+python -m verify.verify_seal_synthetic
 
 # Coverage comparison
 python -m gridworld_track.compare_coverage
