@@ -37,7 +37,7 @@ from gridworld_track.gridworld import GridWorld
 def local_context_label(env):
     """Same independent ground-truth signal used in verify_clustering.py --
     computed from env.grid directly, never seen by any trained component."""
-    from gridworld import WALL, OBJ_A, OBJ_B
+    from gridworld_track.gridworld import WALL, OBJ_A, OBJ_B
     y, x = env.pos
     neighbors = []
     for dy, dx in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
