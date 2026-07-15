@@ -1,0 +1,24 @@
+# logs (JSONL trajectory files)
+/logs/
+*.jsonl
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# numpy/random state dumps (if any)
+*.npy
+*.npz
