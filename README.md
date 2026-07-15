@@ -221,142 +221,29 @@ Given that diagnosis, the fix tested was **not** a supervised auxiliary loss on 
 
 ## Research roadmap
 
-```mermaid
-gantt
-    title Genesis Project Roadmap
-    dateFormat  YYYY-MM
-    axisFormat  %Y
+See [RESEARCH_ROADMAP.md](RESEARCH_ROADMAP.md) for the full 14-phase plan with detailed pass bars, plus cross-cutting foundation research (curiosity, representation quality, diagnostics, robustness, development).
 
-    section Phase 1
-    Birth (D1 + RND + Curiosity)      :done, p1, 2026-06, 2026-07
-
-    section Phase 2
-    Perception (Vision + Encoder)     :active, p2, 2026-07, 2026-08
-
-    section Phase 3
-    Object-Centric Understanding      :p3, 2026-08, 2026-09
-
-    section Phase 4
-    Memory                            :p4, 2026-09, 2026-10
-
-    section Phase 5
-    Reasoning                         :p5, 2026-10, 2026-12
-
-    section Phase 6
-    Language                          :p6, 2026-12, 2027-02
-
-    section Phase 7
-    Self Model                        :p7, 2027-02, 2027-04
-
-    section Phase 8
-    Lifelong Growth                   :p8, 2027-04, 2027-06
-
-    section Phase 9
-    Society                           :p9, 2027-06, 2027-09
-```
-
-### Phase 1 — Birth `██████████████████████████████████████████████████` 100%
-
-An agent with no task reward, driven by intrinsic curiosity, learning a stable D1 delay-corrected value function over a toy gridworld. Core brain framework (GRU policy, RND, forward world model, contrastive projector, clustering probe, reconstruction auxiliary). All verification scripts in `verify/` with stated pass/fail bars. Bugs documented with finite-difference checks.
-
-**Claim:** A stable, non-diverging value-learning loop can run on pure intrinsic reward alone. **Verified.** ✅
-
-### Phase 2 — Perception `██████████████████████████████████████████░░░░░░░░` 85%
-
-Vision encoder (CNN + ChannelNorm) that transforms raw RGB pixels into latent vectors, trained by world-model prediction loss. Visual track pipeline is numerically stable. VisualGridWorld renders the same environment to 64×64 images.
-
-**Started but not complete:**
-- Vision encoder is stable but hasn't been through concept-formation tests yet
-- Need encoder ↔ world model co-training dynamics tuned
-- Need latent-space analysis: do similar visual scenes cluster?
-
-**Next:** Port the concept-formation test suite from the feature-vector track to the visual track.
-
-### Phase 3 — Object-Centric Understanding `░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░` 0%
-
-Entities as persistent objects, not transient pixel clusters. The organism should recognize that an object moved, not just that a different pixel arrived.
-
-- Object discovery via temporal coherence (objects move as wholes)
-- Slot attention / object-centric representations
-- Occlusion reasoning: an object behind a wall still exists
-- Object permanence test: tracking through disappearance
-
-**Pass bar:** Clusters in slot space should correlate with ground-truth object identity at NMI > 0.5.
-
-### Phase 4 — Memory `░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░` 0%
-
-Beyond the GRU's recurrent state — dedicated memory architecture that stores, retrieves, and compresses experience.
-
-- Episodic memory: store trajectory segments, retrieve by similarity
-- Memory compression: abstract repeated patterns into schemas
-- Memory consolidation: replay past experiences during "rest" periods
-- Forward planning using retrieved memories
-
-**Pass bar:** Agent with memory outperforms same-capacity agent without memory on a navigation task with a memorized layout.
-
-### Phase 5 — Reasoning `░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░` 0%
-
-Causal inference: the organism attributes effects to their causes. This is the D3 integration point — the causal attribution machinery that the delay-corrected Bellman (D1) was always designed to work with.
-
-- Causal history buffer (ICN) to track consequence delay
-- Counterfactual reasoning: "what if I had taken a different action?"
-- Causal discovery from passive observation
-- Goal-directed planning using causal model
-
-**Pass bar:** Agent distinguishes correlation from causation in a controlled environment (e.g., confounded reward signal).
-
-### Phase 6 — Language `░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░` 0%
-
-Not human-level NLU — grounded language: associating symbols with percepts, actions, and internal states.
-
-- Grounded vocabulary: learn that "up" maps to a specific action vector
-- Instruction following: "go to the blue object" as a compositional command
-- Communicating learned concepts to another agent
-- Emergent communication in multi-agent setting
-
-**Pass bar:** Agent correctly executes a novel 3-step compositional instruction it has never seen before.
-
-### Phase 7 — Self Model `░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░` 0%
-
-The agent models itself: its own capabilities, limitations, current knowledge state, and uncertainty.
-
-- Metacognitive monitoring: "do I know how to do this?"
-- Epistemic humility: confidence-calibrated predictions
-- Skill discovery: identifying reusable behavioral primitives
-- Self-image: a persistent representation of "what kind of thing I am"
-
-**Pass bar:** Agent that is uncertain about a task seeks information (active exploration) rather than taking a random guess.
-
-### Phase 8 — Lifelong Growth `░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░` 0%
-
-The organism accumulates knowledge across tasks without catastrophic forgetting. Each new phase builds on, rather than overwrites, prior learning.
-
-- Progressive network expansion
-- Elastic weight consolidation / synaptic intelligence
-- Curriculum learning: self-directed ordering of challenges
-- Transfer learning to novel environments
-
-**Pass bar:** Agent learns N tasks sequentially with final performance on task 1 comparable to a single-task agent trained only on task 1.
-
-### Phase 9 — Society `░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░` 0%
-
-Multiple agents interact, share knowledge, specialize, and form the rudiments of an artificial culture.
-
-- Multi-agent exploration: coverage vs. competition
-- Knowledge transfer: one agent's learned policy seeded into another
-- Role specialization: agents that develop complementary skills
-- Cultural accumulation: knowledge that outlives any single agent
-
-**Pass bar:** A society of N agents explores a large environment more efficiently than N independent agents.
+**Phase 1 — Birth** ✅ Complete
+**Phase 2 — Perception** ✅ Complete (encoder stable, parity testing remaining)
+**Phase 3 — Object Understanding** ⬜
+**Phase 4 — Memory** ⬜
+**Phase 5 — Concept Formation** ⬜
+**Phase 6 — World Model** ⬜
+**Phase 7 — Reasoning & Planning** ⬜
+**Phase 8 — Language** ⬜
+**Phase 9 — Motivation & Emotion** ⬜
+**Phase 10 — Self Model** ⬜
+**Phase 11 — Lifelong Growth** ⬜
+**Phase 12 — Self Improvement** ⬜
+**Phase 13 — Multi-Agent Society** ⬜
+**Phase 14 — Physical Embodiment** ⬜
 
 ### Immediate next steps
 
-Ordered by dependency, not by ambition:
-
-1. **Combine reconstruction + contrastive, retest clustering** — run contrastive projector (consequence-pair version) on top of `h` already shaped by reconstruction. Pass bar: NMI(clusters, context) should exceed both individual results (0.0618 and 0.0135).
-2. **Scale up coverage-vs-random test** — rerun the sweep with a 20×20 or 30×30 grid and 10–20 seeds for a statistically defensible result.
-3. **Visual track parity** — run the concept-formation gauntlet on visual-track `h`, using pixel-level ground truth as the independent label.
-4. **Real delay learning (D1 + D3 integration)** — build D3's causal attribution machinery. Requires a substantially larger scope and its own pass/fail bar.
+1. **Combine reconstruction + contrastive, retest clustering** — run contrastive projector (consequence-pair version) on top of `h` already shaped by reconstruction. Pass bar: NMI(clusters, context) > 0.062.
+2. **Visual track parity** — run concept-formation tests on visual-track `h`.
+3. **Scale up coverage-vs-random test** — larger grid + more seeds for a defensible result.
+4. **Real delay learning (D1 + D3)** — build causal attribution machinery.
 
 ---
 
