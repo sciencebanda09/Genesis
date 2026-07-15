@@ -69,82 +69,117 @@ def run():
     print("    PASS: embeddings are diverse.")
 
     print("\n[5] Training encoder via world model objective...")
-    env = VisualGridWorld(max_steps=100, render_size=64, seed=seed)
+    env = VisualGridWorld(max_steps=600, render_size=64, seed=seed)
     wm = LatentWorldModel(latent_dim=latent_dim, action_dim=env.action_dim, seed=seed)
 
-    images_t, actions, images_next = [], [], []
+    # BUG FIX (audit, two rounds): round 1 used cosine similarity on
+    # random-reset pairs, which saturated near 1.0 for BOTH temporal and
+    # random pairs because this environment's raw pixels are already
+    # ~0.999 cosine-similar to each other (small grid, uniform background)
+    # -- root-caused via mean-centering (no help), PCA (no collapse), and
+    # direct raw-pixel cosine check (confirmed: 0.9991 +/- 0.0002 before
+    # any encoder involvement). Round 2 switched to Euclidean distance on
+    # random-reset pairs, which looked like a strong signal (5.47x ratio)
+    # until compared against an UNTRAINED encoder's noise floor (5.11x) --
+    # nearly as large, because even a random encoder inherits raw pixel-
+    # level temporal autocorrelation (adjacent frames are ~7x closer than
+    # random pairs in raw pixel space, verified separately) just by being
+    # a roughly-continuous function of its input.
+    #
+    # Round 3 (this version): collect ONE continuous trajectory (no resets
+    # mixed in) and compare ADJACENT pairs (t, t+1) against TEMPORALLY-
+    # DISTANT pairs (t, t+20) from the SAME trajectory, then compare that
+    # ratio against the same ratio computed on RAW PIXELS. This is the
+    # test that actually isolates "did the encoder add temporal structure
+    # beyond what's already in the pixels" rather than "do temporal pairs
+    # differ from IID-random pairs" (which pixel autocorrelation alone
+    # can produce). Verified result: trained-encoder ratio (2.28x) was
+    # NOT higher than the raw-pixel ratio (2.47x) on the same pairs -- no
+    # evidence the encoder adds temporal sensitivity beyond the pixels'
+    # own autocorrelation. This is now reported honestly below rather than
+    # papered over with a weaker test.
+    images, actions_traj = [], []
     obs = env.reset()
-    for _ in range(300):
+    for _ in range(600):
         action = int(rng.integers(env.action_dim))
-        next_obs, _, done, _ = env.step(action)
-        images_t.append(obs)
-        actions.append(action)
-        images_next.append(next_obs)
-        obs = next_obs
+        images.append(obs)
+        actions_traj.append(action)
+        obs, _, done, _ = env.step(action)
         if done:
             obs = env.reset()
+    images.append(obs)
+    images = np.stack(images).astype(np.float32) / 255.0
+    n_frames = len(images)
 
-    images_t = np.stack(images_t).astype(np.float32) / 255.0
-    images_next = np.stack(images_next).astype(np.float32) / 255.0
-    actions = np.array(actions, np.int32)
-
+    images_t = images[:-1]
+    images_next = images[1:]
+    actions = np.array(actions_traj, np.int32)
     n = len(images_t)
     batch_size = 16
     losses = []
 
-    # Joint training: encoder every 5th step, WM every step
-    for i in range(100):
+    for i in range(400):
         idx = rng.integers(0, n, size=batch_size)
         im_batch = images_t[idx].transpose(0, 3, 1, 2)
         nim_batch = images_next[idx].transpose(0, 3, 1, 2)
 
         next_latents = enc.forward(nim_batch).copy()
         latents = enc.forward(im_batch)
-
         loss, d_latent = wm.update_step_with_grad(latents, actions[idx], next_latents)
 
-        if i % 5 == 0:
+        if i % 3 == 0:
             enc.backward(d_latent)
-
         losses.append(loss)
 
-    print(f"    Trained {len(losses)} steps (encoder {len(losses)//5}x). "
+    print(f"    Trained {len(losses)} WM steps (encoder ~{len(losses)//3}x). "
           f"Loss: first 10 avg={np.mean(losses[:10]):.5f}, "
           f"last 10 avg={np.mean(losses[-10:]):.5f}")
 
-    print("\n[6] Verifying temporal similarity > random similarity...")
-    idx_pairs = rng.integers(0, n - 1, size=100)
-    idx_rand = rng.integers(0, n, size=100)
-
-    im_t = images_t[idx_pairs].transpose(0, 3, 1, 2)
-    im_n = images_next[idx_pairs].transpose(0, 3, 1, 2)
-    im_r = images_t[idx_rand].transpose(0, 3, 1, 2)
+    print("\n[6] Verifying encoder adds temporal structure beyond raw pixels...")
+    gap_steps = 20
+    valid_idx = rng.integers(0, n_frames - gap_steps - 1, size=200)
+    im_t = images[valid_idx].transpose(0, 3, 1, 2)
+    im_adjacent = images[valid_idx + 1].transpose(0, 3, 1, 2)
+    im_distant = images[valid_idx + gap_steps].transpose(0, 3, 1, 2)
 
     z_t = enc.forward(im_t)
-    z_n = enc.forward(im_n)
-    z_r = enc.forward(im_r)
+    z_adj = enc.forward(im_adjacent)
+    z_dist = enc.forward(im_distant)
 
-    def cos_sim(a, b):
-        num = np.sum(a * b, axis=-1)
-        den = np.linalg.norm(a, axis=-1) * np.linalg.norm(b, axis=-1) + 1e-8
-        return float(np.mean(num / den))
+    dist_adj = np.linalg.norm(z_t - z_adj, axis=1)
+    dist_far = np.linalg.norm(z_t - z_dist, axis=1)
+    encoder_ratio = float(dist_far.mean() / (dist_adj.mean() + 1e-8))
 
-    cos_temporal = cos_sim(z_t, z_n)
-    cos_random = cos_sim(z_t, z_r)
+    raw_adj = np.linalg.norm(
+        im_t.reshape(len(im_t), -1) - im_adjacent.reshape(len(im_adjacent), -1), axis=1)
+    raw_far = np.linalg.norm(
+        im_t.reshape(len(im_t), -1) - im_distant.reshape(len(im_distant), -1), axis=1)
+    pixel_ratio = float(raw_far.mean() / (raw_adj.mean() + 1e-8))
 
-    print(f"    Temporal-pair cos sim:  {cos_temporal:.4f}")
-    print(f"    Random-pair cos sim:    {cos_random:.4f}")
-    print(f"    Gap:                    {cos_temporal - cos_random:+.4f}")
+    print(f"    Encoder: adjacent dist={dist_adj.mean():.4f}  distant dist={dist_far.mean():.4f}  "
+          f"ratio={encoder_ratio:.2f}x")
+    print(f"    RawPixel: adjacent dist={raw_adj.mean():.2f}  distant dist={raw_far.mean():.2f}  "
+          f"ratio={pixel_ratio:.2f}x")
 
     print()
-    if cos_temporal > cos_random:
-        print("RESULT: encoder produces temporally-aware embeddings.")
-        print("        (adjacent frames are closer in latent space than random pairs).")
+    # Real bar: the encoder's own ratio must clear the raw-pixel ratio by a
+    # meaningful margin -- i.e. it must ADD temporal-distance sensitivity,
+    # not just inherit what's already present in the pixels.
+    if encoder_ratio > pixel_ratio * 1.15:
+        print(f"RESULT: encoder ADDS temporal structure beyond raw-pixel autocorrelation.")
+        print(f"        (encoder ratio {encoder_ratio:.2f}x clears raw-pixel ratio "
+              f"{pixel_ratio:.2f}x by >1.15x margin)")
     else:
-        print("RESULT: temporal gap not observed with short training.")
-        print("        The encoder architecture is verified; longer training may help.")
+        print(f"RESULT: NO evidence the encoder adds temporal structure beyond what's")
+        print(f"        already present in raw pixels.")
+        print(f"        (encoder ratio {encoder_ratio:.2f}x vs raw-pixel ratio {pixel_ratio:.2f}x --")
+        print(f"         not a meaningfully higher ratio; margin needed >{pixel_ratio*1.15:.2f}x)")
+        print("        The encoder architecture is verified (steps 1-4 passed) and the")
+        print("        world-model-driven training loss does decrease, but this specific")
+        print("        claim -- that training gives the encoder temporally-aware structure")
+        print("        beyond simple pixel autocorrelation -- is NOT supported by this run.")
 
-    return cos_temporal, cos_random, losses
+    return encoder_ratio, pixel_ratio, losses
 
 
 if __name__ == "__main__":

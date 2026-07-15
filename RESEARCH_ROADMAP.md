@@ -323,3 +323,55 @@ For context, the original 13-phase vision:
 11. Self Evolution — ⬜
 12. Society — ⬜
 13. Embodiment — ⬜
+
+---
+
+## Audit Addendum — verify/ script fixes (this session)
+
+Two verification scripts under `verify/` were found to have bugs in the
+*test itself*, not the systems they were testing. Flagging this against
+the "✅ Complete" markers above, since it affects what those markers can
+honestly claim.
+
+**`verify_world_model_v2.py`** — the encoder used to build the transition
+dataset was never trained (`enc.encode()` called, `enc.backward()` never
+invoked). An untrained encoder produces near-arbitrary latents, so the
+world model was being asked to predict noise from noise. Original result:
+1.02x real-vs-shuffled ratio (no signal). Fixed by jointly training
+encoder + world model before evaluation. New result: **4.33x** — a real,
+positive signal, though still well behind the feature-vector world
+model's ~30x on the equivalent test.
+
+**`verify_encoder.py`** — went through three rounds before landing on a
+fair test, kept here because the wrong turns are informative:
+1. *Original:* cosine similarity, temporal vs. random-reset pairs, pass
+   bar = "any positive gap." Result printed as PASS at a +0.0007 gap —
+   noise-level, false positive.
+2. *Round 2:* switched to Euclidean distance (cosine saturates near 1.0 on
+   this environment because raw pixels are already ~0.999 cosine-similar
+   to each other — small grid, uniform background — confirmed directly).
+   Result looked strong (5.47x ratio) until compared against an
+   *untrained* encoder's own noise floor (5.11x) — nearly identical,
+   because even a random encoder inherits pixel-level temporal
+   autocorrelation just by being a roughly-continuous function of its
+   input.
+3. *Round 3 (current):* compare adjacent (t, t+1) vs. temporally-distant
+   (t, t+20) pairs from a single continuous trajectory, and require the
+   *encoder's* ratio to exceed the *raw-pixel* ratio on the same pairs —
+   the only version of this test that actually isolates "did training add
+   structure" from "did the encoder merely fail to destroy structure
+   already in the pixels." Honest result: encoder ratio (1.15x) is not
+   higher than the raw-pixel ratio (1.38x) — **no evidence found that
+   training gives the encoder temporally-aware structure beyond simple
+   pixel autocorrelation**, in this run.
+
+**What this means for the roadmap:** Phase 2's architecture (encoder runs,
+trains without diverging, produces correctly-shaped output) is genuinely
+verified. The stronger claim — that the encoder *learns* meaningful
+temporal/visual structure from the world-model objective — is not yet
+supported by evidence and should not be assumed true when building Phase
+3/4 work on top of the visual track. Feature-vector track (Phase 1)
+remains the more thoroughly verified substrate.
+
+Both scripts now state an explicit noise-floor or baseline comparison
+before declaring a result, not just "is the number positive."
