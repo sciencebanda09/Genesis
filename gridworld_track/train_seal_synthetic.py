@@ -31,13 +31,20 @@ def run(episodes=300, max_steps=200, seed=0, log_path="logs/seal_synthetic.jsonl
             self.inner_steps = _steps
             self.rng = np.random.default_rng(0)
 
+        def _save_wm(self):
+            return [p.copy() for p in self._wm.net.all_params()]
+
+        def _restore_wm(self, saved):
+            for t, s in zip(self._wm.net.all_params(), saved):
+                t[:] = s
+
         def run(self, edit_raw, seed_offset=0):
             edit = scale_edit(edit_raw, SYNTHETIC_EDIT_SPEC)
+            saved = self._save_wm()
             pre_wm_err = _eval_wm_error(self._wm, self._agent)
             synth_data, mix_ratio = self._synth.generate(
                 edit_raw, rng=np.random.default_rng(int(seed_offset)))
 
-            wm_losses = []
             for t in range(min(self.inner_steps, 50)):
                 batch = self._agent.buffer.sample(64)
                 if batch is None:
@@ -48,11 +55,11 @@ def run(episodes=300, max_steps=200, seed=0, log_path="logs/seal_synthetic.jsonl
                     for k in ["states", "hiddens", "actions", "rewards",
                               "next_states", "next_hiddens", "dones", "weights"]:
                         batch[k] = np.concatenate([batch[k], synth_data[k][idx]])
-                wml = self._wm.update_step(batch["hiddens"], batch["actions"],
-                                           batch["next_hiddens"])
-                wm_losses.append(wml)
+                self._wm.update_step(batch["hiddens"], batch["actions"],
+                                     batch["next_hiddens"])
 
             post_wm_err = _eval_wm_error(self._wm, self._agent)
+            self._restore_wm(saved)
             wm_improvement = pre_wm_err - post_wm_err
             reward = float(np.clip(wm_improvement, -1.0, 1.0))
 

@@ -64,7 +64,13 @@ def _run_seal_synthetic(episodes=150, max_steps=100, seed=42, warmup=300,
         def __init__(self, a, w, s):
             self._a = a; self._w = w; self._s = s; self.inner_steps = 50
             self.rng = np.random.default_rng(0)
+        def _save_wm(self):
+            return [p.copy() for p in self._w.net.all_params()]
+        def _restore_wm(self, saved):
+            for t, s in zip(self._w.net.all_params(), saved):
+                t[:] = s
         def run(self, edit_raw, seed_offset=0):
+            saved = self._save_wm()
             pre = _eval_wm(self._w, self._a)
             sd, _ = self._s.generate(edit_raw, rng=np.random.default_rng(int(seed_offset)))
             for t in range(50):
@@ -76,11 +82,15 @@ def _run_seal_synthetic(episodes=150, max_steps=100, seed=42, warmup=300,
                         batch[k] = np.concatenate([batch[k], sd[k][idx]])
                 self._w.update_step(batch["hiddens"], batch["actions"], batch["next_hiddens"])
             post = _eval_wm(self._w, self._a)
+            self._restore_wm(saved)
             return float(np.clip(pre - post, -1.0, 1.0)), {}
 
     inner = _IL(agent, wm, synth)
     seal = SEALLoop(metric_dim=8, edit_dim=3, inner_loop_fn=inner, seed=seed + 2000)
 
+    current_edit_raw = None
+    current_edit_scaled = None
+    steps_since_edit = 0
     global_step = 0
     for ep in range(episodes):
         obs = env.reset(); agent.reset_hidden()
@@ -89,7 +99,10 @@ def _run_seal_synthetic(episodes=150, max_steps=100, seed=42, warmup=300,
             if global_step > warmup and global_step % outer_every == 0:
                 ms = np.array([env.coverage(), agent.epsilon(), 0, 0,
                                agent.policy_net.optim.lr, 0, 0, 0], np.float32)
-                seal.outer_step(ms, n_edits=n_edits, seed_offset=ep * 1000)
+                result = seal.outer_step(ms, n_edits=n_edits, seed_offset=ep * 1000)
+                current_edit_raw = result["best_edit"]
+                current_edit_scaled = scale_edit(np.array(current_edit_raw, np.float32), SYNTHETIC_EDIT_SPEC)
+                steps_since_edit = 0
             h_before = agent._h.copy()
             action = agent.select_action(obs)
             next_obs, _, done, info = env.step(action)
@@ -100,7 +113,26 @@ def _run_seal_synthetic(episodes=150, max_steps=100, seed=42, warmup=300,
             if global_step > warmup:
                 rnd.update_step(np.array([next_obs]))
                 agent.update()
-                wm.update_step(h_before, [action], h_after)
+                if current_edit_scaled is not None and steps_since_edit < int(round(current_edit_scaled[0])):
+                    mix_ratio = current_edit_scaled[2]
+                    sd, _ = synth.generate(current_edit_raw,
+                                            rng=np.random.default_rng(steps_since_edit))
+                    if sd and len(sd["hiddens"]) > 0:
+                        batch = agent.buffer.sample(64)
+                        if batch:
+                            n_synth = min(len(sd["hiddens"]), int(16 * mix_ratio))
+                            idx = np.random.default_rng(steps_since_edit).integers(
+                                0, len(sd["hiddens"]), size=n_synth)
+                            for k in batch:
+                                batch[k] = np.concatenate([batch[k], sd[k][idx]])
+                            wm.update_step(batch["hiddens"], batch["actions"], batch["next_hiddens"])
+                        else:
+                            wm.update_step(h_before, [action], h_after)
+                    else:
+                        wm.update_step(h_before, [action], h_after)
+                else:
+                    wm.update_step(h_before, [action], h_after)
+                steps_since_edit += 1
         coverages.append(env.coverage())
     for _ in range(20):
         batch = agent.buffer.sample(64)
