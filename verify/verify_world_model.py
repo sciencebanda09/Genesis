@@ -11,6 +11,7 @@ would be a silent failure mode indistinguishable from "working" if you
 only look at the raw loss curve going down.
 """
 import numpy as np
+from tqdm import tqdm
 
 from core.rnd import RNDModule
 from core.agent import D1Agent
@@ -69,12 +70,10 @@ def main(n_steps=3000, train_updates=500, batch_size=64, seed=0):
 
     print(f"\nTraining forward world model for {train_updates} steps...")
     losses = []
-    for i in range(train_updates):
+    for _ in tqdm(range(train_updates), desc="WM"):
         idx = rng.integers(0, n, size=batch_size)
         loss = wm.update_step(H[idx], A[idx], H_next[idx])
         losses.append(loss)
-        if i % 50 == 0:
-            print(f"  step {i:4d}  loss {loss:.5f}")
 
     print()
     print("=" * 60)

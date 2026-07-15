@@ -14,6 +14,8 @@ label anywhere -- recovers context information as a side effect of being
 asked to not throw away observation content in general.
 """
 import numpy as np
+from sklearn.metrics import normalized_mutual_info_score
+from tqdm import tqdm
 
 from core.rnd import RNDModule
 from core.agent import D1Agent
@@ -39,25 +41,7 @@ def local_context_label(env):
 
 
 def normalized_mutual_info(labels_a, labels_b):
-    labels_a = np.asarray(labels_a); labels_b = np.asarray(labels_b)
-    n = len(labels_a)
-    a_vals = np.unique(labels_a); b_vals = np.unique(labels_b)
-    contingency = np.zeros((len(a_vals), len(b_vals)))
-    for i, av in enumerate(a_vals):
-        for j, bv in enumerate(b_vals):
-            contingency[i, j] = np.sum((labels_a == av) & (labels_b == bv))
-    p_ab = contingency / n
-    p_a = p_ab.sum(axis=1, keepdims=True)
-    p_b = p_ab.sum(axis=0, keepdims=True)
-    with np.errstate(divide="ignore", invalid="ignore"):
-        mi_terms = p_ab * np.log((p_ab + 1e-12) / (p_a @ p_b + 1e-12) + 1e-12)
-    mi = np.nansum(np.where(p_ab > 0, mi_terms, 0.0))
-    def entropy(p):
-        p = p[p > 0]
-        return -np.sum(p * np.log(p + 1e-12))
-    h_a = entropy(p_a.flatten()); h_b = entropy(p_b.flatten())
-    denom = np.sqrt(h_a * h_b)
-    return float(mi / denom) if denom > 0 else 0.0
+    return float(normalized_mutual_info_score(labels_a, labels_b))
 
 
 def run_condition(use_recon, n_steps=4000, seed=0):
@@ -105,7 +89,7 @@ def cluster_and_nmi(H, CTX, seed=0, n_clusters=5):
     Hn = H / (np.linalg.norm(H, axis=-1, keepdims=True) + 1e-8)
     rng = np.random.default_rng(seed)
     km = OnlineKMeans(n_clusters=n_clusters, embed_dim=H.shape[1], seed=seed)
-    for i in range(500):
+    for _ in tqdm(range(500), desc="Clustering"):
         idx = rng.integers(0, len(H), 64)
         km.update_step(Hn[idx])
     assignments = km.assign(Hn)

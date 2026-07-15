@@ -25,6 +25,8 @@ down," which we already know it will (InfoNCE will separate almost any
 non-degenerate positive-pair signal to some extent).
 """
 import numpy as np
+from sklearn.metrics import normalized_mutual_info_score
+from tqdm import tqdm
 
 from core.rnd import RNDModule
 from core.agent import D1Agent
@@ -89,25 +91,7 @@ def collect_transitions_with_context(n_steps=4000, seed=0):
 
 
 def normalized_mutual_info(labels_a, labels_b):
-    labels_a = np.asarray(labels_a); labels_b = np.asarray(labels_b)
-    n = len(labels_a)
-    a_vals = np.unique(labels_a); b_vals = np.unique(labels_b)
-    contingency = np.zeros((len(a_vals), len(b_vals)))
-    for i, av in enumerate(a_vals):
-        for j, bv in enumerate(b_vals):
-            contingency[i, j] = np.sum((labels_a == av) & (labels_b == bv))
-    p_ab = contingency / n
-    p_a = p_ab.sum(axis=1, keepdims=True)
-    p_b = p_ab.sum(axis=0, keepdims=True)
-    with np.errstate(divide="ignore", invalid="ignore"):
-        mi_terms = p_ab * np.log((p_ab + 1e-12) / (p_a @ p_b + 1e-12) + 1e-12)
-    mi = np.nansum(np.where(p_ab > 0, mi_terms, 0.0))
-    def entropy(p):
-        p = p[p > 0]
-        return -np.sum(p * np.log(p + 1e-12))
-    h_a = entropy(p_a.flatten()); h_b = entropy(p_b.flatten())
-    denom = np.sqrt(h_a * h_b)
-    return float(mi / denom) if denom > 0 else 0.0
+    return float(normalized_mutual_info_score(labels_a, labels_b))
 
 
 def build_consequence_positive_mask(wm, h_batch, a_batch, k_nearest=5):
@@ -154,7 +138,7 @@ def main(n_steps=4000, wm_train_steps=1000, contrastive_train_steps=1000,
 
     print(f"\nTraining world model for {wm_train_steps} steps...")
     wm = ForwardWorldModel(gru_dim=gru_dim, action_dim=action_dim, seed=seed)
-    for i in range(wm_train_steps):
+    for _ in tqdm(range(wm_train_steps), desc="WM"):
         idx = rng.integers(0, n, size=batch_size)
         wm.update_step(H[idx], A[idx], H_next[idx])
 
@@ -174,7 +158,7 @@ def main(n_steps=4000, wm_train_steps=1000, contrastive_train_steps=1000,
           f"gap={same_before - diff_before:+.4f}")
 
     losses = []
-    for i in range(contrastive_train_steps):
+    for i in tqdm(range(contrastive_train_steps), desc="Contrastive"):
         idx = rng.integers(0, n, size=batch_size)
         h_batch = H[idx]
         a_batch = A[idx]
@@ -183,8 +167,6 @@ def main(n_steps=4000, wm_train_steps=1000, contrastive_train_steps=1000,
         loss = proj.update_step(wm_feats_batch, positive_mask)
         if loss is not None:
             losses.append(loss)
-        if i % 100 == 0 and loss is not None:
-            print(f"  step {i:4d}  loss {loss:.5f}")
 
     same_after, diff_after = same_vs_diff_similarity_for_context(
         proj.embed, wm_features_all, CTX, rng)
@@ -193,7 +175,7 @@ def main(n_steps=4000, wm_train_steps=1000, contrastive_train_steps=1000,
 
     z_all = proj.embed(wm_features_all)
     km = OnlineKMeans(n_clusters=5, embed_dim=z_all.shape[1], seed=seed)
-    for i in range(500):
+    for _ in tqdm(range(500), desc="Clustering"):
         idx = rng.integers(0, n, size=batch_size)
         km.update_step(z_all[idx])
     cluster_assignments = km.assign(z_all)

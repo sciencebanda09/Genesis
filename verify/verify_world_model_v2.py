@@ -9,6 +9,7 @@ The bar (same as world_model.py's verify_world_model.py):
     to the mean of the latent distribution.
 """
 import numpy as np
+from tqdm import tqdm
 from visual_track.visual_gridworld import VisualGridWorld
 from visual_track.vision_encoder import VisionEncoder
 from visual_track.world_model_v2 import LatentWorldModel
@@ -47,12 +48,10 @@ def main(n_steps=800, train_updates=300, batch_size=64, seed=0):
 
     print(f"\nTraining latent world model for {train_updates} steps...")
     losses = []
-    for i in range(train_updates):
+    for _ in tqdm(range(train_updates), desc="LatentWM"):
         idx = rng.integers(0, n, size=batch_size)
         loss = wm.update_step(L[idx], A[idx], L_next[idx])
         losses.append(loss)
-        if i % 100 == 0:
-            print(f"  step {i:4d}  loss {loss:.5f}")
 
     print()
     print("=" * 60)

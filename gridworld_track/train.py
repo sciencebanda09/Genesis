@@ -16,6 +16,7 @@ train alongside, without altering D1's or RND's own updates.
 """
 import argparse
 import numpy as np
+from tqdm import tqdm
 
 from core.rnd import RNDModule
 from core.agent import D1Agent
@@ -42,7 +43,7 @@ def run(episodes=200, max_steps=200, seed=0, log_path="logs/phase1_run.jsonl",
     global_step = 0
     episode_returns = []
 
-    for ep in range(episodes):
+    for ep in tqdm(range(episodes), desc="Training"):
         obs = env.reset()
         agent.reset_hidden()
         ep_intrinsic_return = 0.0
