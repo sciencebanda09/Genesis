@@ -189,62 +189,99 @@ The agent leaves the simulation and interacts with the physical world.
 
 ---
 
-## Foundation Research: what needs work right now
+## Genesis Foundation Research
 
 These aren't phases — they're cross-cutting improvements that should be investigated continuously, starting now.
 
 ### 1. Better Curiosity
 
-| Current | Problem | Candidates to compare |
-|---------|---------|----------------------|
-| RND | noisy TV, novelty only, no uncertainty | RND, ICM, NGU, Plan2Explore |
+| Current | Problems |
+|---------|----------|
+| RND | noisy TV, novelty only, no uncertainty |
 
-Not necessarily replace RND — understand the tradeoffs first.
+I'd compare:
 
-### 2. Representation Quality
+| RND | ICM | NGU | Plan2Explore |
+|-----|-----|-----|--------------|
+
+Not necessarily replace RND, but understand the tradeoffs.
+
+### 2. Replay Memory
+
+| Current | Upgrade Path |
+|---------|--------------|
+| ReplayBuffer | Experience Replay → Prioritized Replay → Sequence Replay → Episodic Replay |
+
+Much closer to biological memory.
+
+### 3. Representation Quality
 
 This is probably the biggest weakness. Instead of one encoder, test:
 
 | CNN | ResNet | BYOL | VICReg | SimCLR | MAE |
 |-----|--------|------|--------|--------|-----|
 
-Which representation is actually best for downstream tasks?
+Which representation is actually best?
 
-### 3. Representation Diagnostics
+### 4. World Model
+
+| Current | Problem |
+|---------|---------|
+| latent → latent | uncertainty prediction, multi-step prediction, rollout consistency, imagination |
+
+Instead of predict 1 step, predict:
+
+| 10 steps | 20 steps | 50 steps |
+|----------|----------|----------|
+
+### 5. Spatial Memory
+
+Right now, Genesis doesn't remember where things are. Humans have:
+
+```
+hippocampus → cognitive map
+```
+
+Genesis should too.
+
+### 6. Temporal Memory
+
+| Current | Compare |
+|---------|---------|
+| GRU | GRU, LSTM, Transformer, Mamba, RWKV |
+
+Find what actually works.
+
+### 7. Representation Diagnostics
 
 Don't just train. Measure:
 
-- Mutual Information
-- CKA (Centered Kernel Alignment)
-- Linear Probe accuracy
-- Cluster Purity
-- Latent Collapse ratio
-- Nearest Neighbor Accuracy
-- Object Consistency
+| Mutual Information | CKA | Linear Probe | Cluster Purity | Latent Collapse | Nearest Neighbor Accuracy | Object Consistency |
+|--------------------|-----|--------------|----------------|-----------------|---------------------------|-------------------|
 
 Become obsessed with measuring representations.
 
-### 4. Perception Robustness
+### 8. Perception Robustness
 
 Train under:
 
-- Lighting changes
-- Rotation
-- Noise
-- Occlusion
-- New layouts
+| Lighting | Rotation | Noise | Occlusion | New Layouts |
+|----------|----------|-------|-----------|-------------|
 
 A baby still recognizes a toy in dim light. Genesis should too.
 
-### 5. Developmental Stages
+### 9. Development
 
-Instead of `train 5000 episodes` flat:
+This one is huge. Instead of `train 5000 episodes`, create:
 
 ```
-Age 0:  random motor babbling
-Age 1:  basic object tracking
-Age 2:  goal-directed reaching
-Age 3:  tool use
+Age 0
+↓
+Age 1
+↓
+Age 2
+↓
+Age 3
 ```
 
 Each age unlocks new capabilities. Exactly like humans.
