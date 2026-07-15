@@ -409,7 +409,14 @@ genesis_phase1/
 
 ## How to run
 
-**Requirements:** Python 3.9+, NumPy. Zero other dependencies.
+**Requirements:** Python 3.9+. Install dependencies:
+
+```bash
+pip install -r requirements.txt
+# or: pip install -e .
+```
+
+Dependencies added deliberately: `scikit-learn` replaces hand-rolled NMI, clustering, and contingency tables (~100 lines of bug-prone code). `matplotlib` enables plots (curves, coverage, latents) instead of terminal numbers. `tqdm` adds progress bars to training loops — zero API surface, pure quality-of-life.
 
 ```bash
 # Train the D1+RND agent on the gridworld track
