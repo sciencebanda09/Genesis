@@ -22,6 +22,24 @@ Vision encoder (CNN + ChannelNorm) that transforms raw RGB pixels into latent ve
 
 ↓
 
+### Phase 2.5 — Executive Cortex
+✅ **Complete**
+
+The organism's first meta-cognitive system. The Executive Cortex observes internal learning dynamics across all subsystems and adaptively regulates:
+
+- **Curiosity weighting** — which intrinsic signal to trust (RND, ICM, future modules) and by how much, based on recent reward magnitudes.
+- **Memory mixing** — how to sample experience across replay strategies (uniform, prioritized, sequence), driven by TD-error magnitude.
+- **Exploration rate** — adaptive epsilon controlled by coverage trend feedback, replacing fixed schedules.
+- **Learning rates** — per-module LR factors modulated by loss trends.
+
+**Design principle:** The cortex NEVER uses hardcoded rules (`if maze: use ICM`). All regulation is driven by observed metric dynamics. Every future cognitive subsystem (Attention, Planning, Language, Reasoning, Emotion, Self Model) connects through the Executive Cortex rather than talking directly to each other.
+
+**Verification:** 8/12 metrics favor Executive Cortex over static baselines in 3 experiments (adaptive curiosity, adaptive memory, adaptive exploration). Outperforms static baselines in curiosity and exploration regulation. See `verify/verify_executive_cortex.py`.
+
+⬜ **Remaining:** Integrate as default regulation layer in both training loops. Add curiosity module registry. Long-horizon stability tests (200+ episodes).
+
+↓
+
 ### Phase 3 — Object Understanding
 ⬜
 

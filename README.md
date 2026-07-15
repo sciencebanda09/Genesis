@@ -24,6 +24,10 @@ This is the start of a long research program. Phase 1 builds the minimal viable 
 
 ```mermaid
 flowchart TB
+    subgraph Executive_Cortex[Executive Cortex — Meta-Cognitive Regulator]
+        EC[Observes internal dynamics\nRegulates: curiosity, memory,\nexploration, learning rates]
+    end
+
     subgraph Environment
         GW[GridWorld: 12x12, 5 actions, 8-dim obs]
         VGW[VisualGridWorld: 64x64 RGB render]
@@ -42,11 +46,16 @@ flowchart TB
         DN --> D1
     end
 
-    subgraph Curiosity[RND Intrinsic Motivation]
-        RT[Random Target MLP frozen]
-        RP[Predictor MLP trainable]
-        ERR[pred - target squared = intrinsic reward]
-        RT & RP --> ERR
+    subgraph Curiosity[Intrinsic Motivation]
+        RND[RND: predictor-target squared]
+        ICM[ICM: action-conditional prediction error]
+        FUTURE[Future curiosity modules]
+    end
+
+    subgraph Memory[Replay Memory]
+        UNI[Uniform Replay]
+        PRIO[Prioritized Replay]
+        SEQ[Sequence Replay]
     end
 
     subgraph Concept[Concept-formation track]
@@ -64,6 +73,15 @@ flowchart TB
         VE --> LWM
     end
 
+    EC -.->|adaptive weights| Curiosity
+    EC -.->|adaptive mixing| Memory
+    EC -.->|adaptive epsilon| AGENT
+    EC -.->|adaptive LR| Curiosity
+    EC -.->|adaptive LR| Concept
+    EC -.->|metrics| AGENT
+    EC -.->|metrics| Curiosity
+    EC -.->|metrics| Concept
+
     GW -->|obs 8-dim| AGENT
     AGENT -->|action| GW
     VGW -->|RGB image| VE
@@ -72,6 +90,7 @@ flowchart TB
     AGENT[Agent Loop] --- Agent_Core
     AGENT --- Curiosity
     AGENT --- Concept
+    AGENT --- Memory
 ```
 
 ### Gradient isolation
@@ -95,7 +114,7 @@ No gradient flows between these branches — each tracks its own optimizer. This
 
 ### What was built
 
-The organism has five components, assembled incrementally:
+The organism has six components, assembled incrementally:
 
 **1. The environment — `GridWorld`**
 A 12×12 grid with walls and two object types (A, B). The agent receives an 8-dim hand-crafted feature vector — normalized position, distance to nearest object, object type one-hot, step count. No extrinsic reward. Ever. Reward is `0.0` for every step of every episode. The only learning signal is intrinsic.
@@ -116,6 +135,12 @@ Random Network Distillation: a fixed random target MLP and a trainable predictor
 - **VisionEncoder** — CNN (3 conv layers + 1 residual block + projection) with ChannelNorm after every conv.
 - **VisualGridWorld** — renders the same gridworld to 32×32 or 64×64 RGB images.
 - **LatentWorldModel** — predicts `latent_{t+1}` from `(latent_t, action)`, operating in the encoder's representational space.
+
+**6. Executive Cortex** (meta-cognitive regulation layer)
+- **ExecutiveCortex** — observes internal metrics across all subsystems and adaptively regulates curiosity weights (RND/ICM mixing), memory sampling (uniform/prioritized mixing), exploration rate (coverage-trend feedback), and learning rates (loss-trend feedback).
+- **MetricBuffer** — rolling-window metric tracking with trend computation. The sensory epithelium of the cortex.
+- Never hardcodes rules. All regulation is driven by observed metric dynamics.
+- See `core/executive_cortex/cortex.py` for the full cognitive motivation (WHY each regulator exists, not just WHAT it does).
 
 ### What went wrong (four bugs, each worth detailing)
 
@@ -216,6 +241,7 @@ Given that diagnosis, the fix tested was **not** a supervised auxiliary loss on 
 - **Delay net is bootstrapped** to a neutral `τ=1` prior — no real delay-labeled signal exists without D3's causal history buffer (deferred).
 - **Nothing generalizes beyond this one gridworld** — no transfer test has been run.
 - **Visual track** is numerically stable but has not been run through the same concept-formation tests as the feature-vector track.
+- **Executive Cortex** has passed its verification test (outperforms static baselines in curiosity and exploration regulation) but has not been tested beyond 30-episode runs. Long-horizon stability is unverified.
 
 ---
 
@@ -225,6 +251,7 @@ See [RESEARCH_ROADMAP.md](RESEARCH_ROADMAP.md) for the full 14-phase plan with d
 
 **Phase 1 — Birth** ✅ Complete
 **Phase 2 — Perception** ✅ Complete (encoder stable, parity testing remaining)
+**Phase 2.5 — Executive Cortex** ✅ Complete (meta-cognitive regulation layer)
 **Phase 3 — Object Understanding** ⬜
 **Phase 4 — Memory** ⬜
 **Phase 5 — Concept Formation** ⬜
@@ -244,6 +271,9 @@ See [RESEARCH_ROADMAP.md](RESEARCH_ROADMAP.md) for the full 14-phase plan with d
 2. **Visual track parity** — run concept-formation tests on visual-track `h`.
 3. **Scale up coverage-vs-random test** — larger grid + more seeds for a defensible result.
 4. **Real delay learning (D1 + D3)** — build causal attribution machinery.
+5. **Executive Cortex integration** — make the cortex the default regulation layer in `gridworld_track/train.py` and `visual_track/train_visual.py`. Test long-horizon stability (200+ episodes).
+6. **Adaptive memory in training loops** — integrate prioritized+sequence replay mixing into the main training pipeline.
+7. **Add curiosity module registry** — make it trivial to plug new curiosity algorithms into the cortex's adaptive weighting system.
 
 ---
 
@@ -257,13 +287,18 @@ genesis_phase1/
 │   ├── networks_min.py             # vendored primitives (Linear, LayerNorm, MLP, GRUCell, Adam)
 │   ├── delay_bellman.py            # delay-corrected Bellman operator (vendored, unmodified)
 │   ├── agent.py                    # D1Agent: GRU dueling-Q + D1 value learning
-│   ├── replay_buffer.py            # minimal replay buffer
-│   ├── rnd.py                      # Random Network Distillation intrinsic curiosity
+│   ├── replay_buffer.py            # three replay strategies (uniform, prioritized, sequence)
+│   ├── rnd.py                      # RND + ICM intrinsic curiosity modules
 │   ├── world_model.py              # forward world model on GRU hidden state
 │   ├── contrastive.py              # InfoNCE contrastive projector (generalized positive_mask)
 │   ├── clustering.py               # OnlineKMeans clustering
 │   ├── recon_auxiliary.py          # GRUReconstructionTrainer (non-circular auxiliary loss)
-│   └── logger.py                   # JSONL trajectory logger
+│   ├── logger.py                   # JSONL trajectory logger
+│   ├── diagnostics.py              # CKA, linear probe, latent collapse metrics
+│   └── executive_cortex/           # meta-cognitive regulation system
+│       ├── __init__.py
+│       └── cortex.py               # ExecutiveCortex: adaptive curiosity, memory,
+│                                   #   exploration, and learning rate regulation
 │
 ├── gridworld_track/                # 8-dim observation track
 │   ├── gridworld.py                # GridWorld environment
@@ -285,7 +320,8 @@ genesis_phase1/
 │   ├── verify_contrastive.py       # FAILED: raw-h collapse (kept for record)
 │   ├── verify_contrastive_on_wm_features.py  # FIX: contrastive on WM features
 │   ├── verify_contrastive_consequence_pairs.py # redesigned consequence-similarity pairing
-│   └── verify_recon_context.py     # reconstruction recovers context info
+│   ├── verify_recon_context.py     # reconstruction recovers context info
+│   └── verify_executive_cortex.py  # adaptive vs static baselines comparison
 │
 ├── scripts/                        # ad-hoc one-off diagnostics (informal)
 │
@@ -316,6 +352,12 @@ python -m visual_track.train_visual --episodes 200 --render-size 64
 python -m verify.verify_world_model
 python -m verify.verify_recon_context
 python -m verify.verify_contrastive_consequence_pairs
+
+# Verify Executive Cortex (adaptive vs static baselines)
+python -m verify.verify_executive_cortex --episodes 50 --max-steps 200
+
+# Multi-seed Executive Cortex verification
+python -m verify.verify_executive_cortex --seeds 3 --episodes 50
 
 # Coverage comparison
 python -m gridworld_track.compare_coverage
