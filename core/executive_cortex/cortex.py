@@ -142,6 +142,8 @@ class ExecutiveCortex:
             'lr_alpha': 0.05,
             'lr_min_factor': 0.5,
             'lr_max_factor': 2.0,
+            'goal_alpha': 0.1,
+            'goal_temp': 0.5,
             'meta_window': 500,
         }
         if config:
@@ -158,6 +160,10 @@ class ExecutiveCortex:
         self._memory_w = {'uniform': 1.0, 'prioritized': 1.0, 'sequence': 1.0}
         self._epsilon = 1.0
         self._lr_factors = {}
+        self._goal_weights = {
+            'curiosity': 1.0, 'safety': 0.2, 'efficiency': 0.2,
+            'knowledge': 1.0, 'survival': 0.2, 'exploration': 1.0, 'prediction': 1.0,
+        }
 
         self._meta_history = deque(maxlen=cfg['meta_window'])
 
@@ -338,6 +344,58 @@ class ExecutiveCortex:
 
         return result
 
+    # ── Goal Regulation ──────────────────────────────────────────────────
+
+    def regulate_goals(self):
+        """Balance multiple motivational drives based on internal state.
+
+        Each goal's weight is adjusted by:
+          - curiosity: stronger when coverage is low (novelty needed)
+          - safety: stronger when negative outcomes detected
+          - efficiency: stronger when coverage is high (exploit mode)
+          - knowledge: stronger when WM uncertainty is high
+          - exploration: stronger when coverage stagnates
+          - prediction: stronger when WM loss is high
+
+        ponytail: independent adjustment per goal. Competing goals would
+        need a proper multi-objective optimization in the full version.
+        """
+        coverage_buf = self._read('coverage', 0.0)
+        coverage = coverage_buf.mean(50) if isinstance(coverage_buf, MetricBuffer) else 0.0
+        coverage_trend = coverage_buf.trend(50) if isinstance(coverage_buf, MetricBuffer) else 0.0
+
+        wm_buf = self._read('wm_loss', 0.0)
+        wm_loss = wm_buf.mean(50) if isinstance(wm_buf, MetricBuffer) else 0.0
+
+        td_buf = self._read('td_error_mean', 0.0)
+        td_error = td_buf.mean(50) if isinstance(td_buf, MetricBuffer) else 0.0
+
+        adjustments = {}
+
+        adjustments['curiosity'] = 1.0 - coverage  # explore when coverage low
+        adjustments['exploration'] = 1.0 if coverage_trend < 0.01 else 0.3
+        adjustments['knowledge'] = float(np.clip(wm_loss * 10, 0.0, 2.0))
+        adjustments['prediction'] = float(np.clip(wm_loss * 5, 0.0, 2.0))
+        adjustments['efficiency'] = coverage  # exploit when coverage high
+        adjustments['safety'] = 0.2 + float(np.clip(td_error * 5, 0.0, 0.8))
+        adjustments['survival'] = 0.2
+
+        alpha = self.cfg['goal_alpha']
+        for key, target in adjustments.items():
+            if key in self._goal_weights:
+                self._goal_weights[key] = (1 - alpha) * self._goal_weights[key] + alpha * target
+
+        total = sum(self._goal_weights.values())
+        if total > 0:
+            for k in self._goal_weights:
+                self._goal_weights[k] /= total
+
+        return dict(self._goal_weights)
+
+    @property
+    def goal_weights(self):
+        return dict(self._goal_weights)
+
     # ── Main Regulation Loop ──────────────────────────────────────────────
 
     def regulate(self):
@@ -368,6 +426,8 @@ class ExecutiveCortex:
             params['memory_weights'] = self.regulate_memory()
             params['epsilon'] = self.regulate_exploration()
             params['lr_factors'] = self.regulate_learning_rates()
+            params['goal_weights'] = self.regulate_goals()
+            params['n_goals'] = len(self._goal_weights)
 
             self._meta_history.append({
                 'step': self.global_step,
@@ -376,6 +436,7 @@ class ExecutiveCortex:
                     'memory_weights': dict(self._memory_w),
                     'epsilon': self._epsilon,
                     'lr_factors': dict(self._lr_factors),
+                    'goal_weights': dict(self._goal_weights),
                 },
                 'metrics': {
                     k: buf.mean(10) if isinstance(buf := self.buf.get(k), MetricBuffer) else 0.0
@@ -413,6 +474,7 @@ class ExecutiveCortex:
             'memory_weights': dict(self._memory_w),
             'epsilon': self._epsilon,
             'lr_factors': dict(self._lr_factors),
+            'goal_weights': dict(self._goal_weights),
             'meta_history_length': len(self._meta_history),
         }
 
