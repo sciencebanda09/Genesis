@@ -149,7 +149,7 @@ Random Network Distillation: a fixed random target MLP and a trainable predictor
 - **LatentWorldModel** — predicts `latent_{t+1}` from `(latent_t, action)`, operating in the encoder's representational space.
 
 **6. Executive Cortex** (meta-cognitive regulation layer)
-- **ExecutiveCortex** — observes internal metrics across all subsystems and adaptively regulates curiosity weights (RND/ICM mixing), memory sampling (uniform/prioritized mixing), exploration rate (coverage-trend feedback), and learning rates (loss-trend feedback).
+- **ExecutiveCortex** — observes internal metrics across all subsystems and adaptively regulates curiosity weights (RND/ICM mixing), memory sampling (uniform/prioritized mixing — trend-based, not magnitude-based, to avoid positive feedback loops), exploration rate (coverage-trend feedback), and learning rates (loss-trend feedback).
 - **MetricBuffer** — rolling-window metric tracking with trend computation. The sensory epithelium of the cortex.
 - Never hardcodes rules. All regulation is driven by observed metric dynamics.
 - See `core/executive_cortex/cortex.py` for the full cognitive motivation (WHY each regulator exists, not just WHAT it does).
@@ -281,6 +281,27 @@ A research log that only reports successes is not a research log. These bugs mat
 **Additional fix:** The verify script now closes the loop by applying the selected edit's `num_steps` and `mix_ratio` to the live WM training between outer steps. Without this, the SEAL loop was an offline training exercise with no mechanism to influence the agent.
 
 **Verification:** WM error improvement corrected from -63.6% to -23.7% (still passes ≥20% bar). Coverage improvement increased from +2.8% to +8.7% because the loop is now closed — the best edit's parameters actively shape training.
+
+#### Bug 10: Adaptive memory — per-sample TD errors discarded, regulation used absolute magnitude (positive feedback loop)
+
+**Phase:** Phase 2.5 — Executive Cortex.
+
+**Symptom:** Adaptive memory (uniform + prioritized replay mixing) won only 2/4 metrics vs static uniform baseline. TD error was consistently worse despite the cortex having a dedicated `regulate_memory()` function.
+
+**Three issues found:**
+
+1. **Priority update used global `td_error_mean` for all indices** — `_agent_update_with_batch` returned only the mean absolute TD error (`td_error_mean`), but the per-sample `td_error` vector was discarded. The priority update assigned the same scalar to every sampled transition, reducing prioritized replay to uniform sampling with wasted IS-weight computation.
+
+2. **Cortex fed the same `td_error_mean` for both buffer types** — `cortex.observe()` received a single `td_error_mean` value regardless of which buffer contributed the sample. The cortex stored it as both `uniform_td_error` and `prioritized_td_error`, making `regulate_memory()` see identical metrics for both types — weights stayed 50/50 regardless of actual performance.
+
+3. **`regulate_memory()` used absolute TD error magnitude** — This created a positive feedback loop: prioritizing high-error transitions keeps the measured TD error for that buffer type artificially high, which makes the cortex favor that type even more, even when the agent isn't actually learning from them. The cortex was reinforcing sampling bias, not learning progress.
+
+**Fix (three parts):**
+1. `_agent_update_with_batch` now returns per-sample `td_error` alongside the mean.
+2. The training loop splits per-sample errors by buffer type: uniform errors go to `uniform_td_error`, prioritized errors go to `prioritized_td_error`. Priority updates use the actual per-sample errors for the prioritized portion only.
+3. `regulate_memory()` switched from absolute magnitude to **trend-based** weighting: a buffer type whose TD error is decreasing (negative trend) is favored — it's surfacing transitions the agent is actively learning from. A type with increasing or flat error is deprioritized. This breaks the feedback loop because improving (decreasing error) narrows the gap, while struggling (increasing error) shifts sampling away.
+
+**Verification:** Adaptive memory wins 3/4 metrics vs static uniform (TD error, coverage, intrinsic return). WM loss tracks world model prediction on changing hidden states — its increase is a side-effect of faster agent learning, not a regression.
 
 ### What was found
 
