@@ -222,10 +222,18 @@ def run_experiment(env, agent, rnd, icm, wm, cortex,
                     metrics['td_error'].append(td_err)
 
                     if use_adaptive_memory and prio_buffer is not None:
-                        # Update priorities
-                        if 'indices' in combined:
-                            td_errors = [stats.get('td_error_mean', 0.0)] * len(combined['indices'])
-                            prio_buffer.update_priorities(combined['indices'], td_errors)
+                        per_sample = stats.get('td_error', None)
+                        if per_sample is not None:
+                            n_u = len(uniform_batch['states']) if uniform_batch is not None else 0
+                            n_p = len(prio_batch['states']) if prio_batch is not None else 0
+                            prio_errs = per_sample[n_u:n_u + n_p]
+                            if 'indices' in combined and len(prio_errs) > 0:
+                                prio_buffer.update_priorities(combined['indices'], prio_errs)
+                            # Track per-buffer TD error for cortex regulation
+                            if n_u > 0:
+                                cortex.observe(uniform_td_error=float(np.mean(np.abs(per_sample[:n_u]))))
+                            if n_p > 0:
+                                cortex.observe(prioritized_td_error=float(np.mean(np.abs(prio_errs))))
 
                 metrics['wm_loss'].append(wm_loss)
 
@@ -324,6 +332,7 @@ def _agent_update_with_batch(agent, batch, env):
 
     return {
         "td_error_mean": float(np.mean(np.abs(td_error))),
+        "td_error": td_error,
         "gamma_eff_mean": float(gamma_e.mean()),
         "delay_loss": delay_loss,
         "q_mean": float(q_sa.mean()),

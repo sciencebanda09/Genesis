@@ -240,22 +240,30 @@ class ExecutiveCortex:
     # ── Memory Regulation ─────────────────────────────────────────────────
 
     def regulate_memory(self):
-        """Weight replay types by the TD-error magnitude they produce.
+        """Weight replay types by learning improvement (TD error trend).
 
-        Principle: larger TD errors = more learning opportunity. Sample more
-        from replay types that surface transitions the agent still gets wrong.
-        As errors diminish, sampling shifts to other types.
+        Principle: a replay type whose TD error is decreasing (negative trend)
+        is surfacing transitions the agent is actively learning from — weight
+        it more. A type with increasing or flat TD error has saturated or
+        is sampling unhelpful noise — weight it less.
 
-        ponytail: TD error magnitude as proxy for learning value. In a full
-        implementation, each replay type would report its own TD error;
-        here we use the global TD error the agent reports, weighted by
-        each buffer's diversity (fraction of unique transitions sampled).
+        Trend-based avoids the positive-feedback trap of absolute-magnitude
+        regulation: prioritizing high-error transitions keeps the measured
+        TD error artificially high, which would otherwise reinforce the same
+        type regardless of actual learning progress.
         """
         errors = {}
         for mem in self._memory_w:
             buf = self._read(f'{mem}_td_error', 0.0)
-            te = abs(buf.mean(50)) if isinstance(buf, MetricBuffer) else 0.0
-            errors[mem] = te + 1e-8  # avoid zero weights
+            if isinstance(buf, MetricBuffer) and len(buf) >= 10:
+                t = buf.trend(30)
+                # negative trend = improving → weight goes up
+                # positive trend = regressing → weight goes down
+                errors[mem] = float(np.clip(-t, 0.0, None)) + 1e-8
+            elif isinstance(buf, MetricBuffer):
+                errors[mem] = 1.0  # neutral before enough data
+            else:
+                errors[mem] = 1e-8  # untracked type, effectively zero
 
         total = sum(errors.values())
         if total > 0:
