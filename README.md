@@ -375,13 +375,14 @@ See [RESEARCH_ROADMAP.md](RESEARCH_ROADMAP.md) for the full 14-phase plan with d
 
 ### Immediate next steps
 
-1. **Combine reconstruction + contrastive, retest clustering** — run contrastive projector (consequence-pair version) on top of `h` already shaped by reconstruction. Pass bar: NMI(clusters, context) > 0.062.
-2. **Visual track parity** — run concept-formation tests on visual-track `h` using the integrated training loop.
-3. **Scale up coverage-vs-random test** — larger grid + more seeds for a defensible result.
-4. **Real delay learning (D1 + D3)** — build causal attribution machinery using ObjectPermanence's slot persistence.
-5. **Episodic→Semantic consolidation in training** — consolidate episodic memories during `train.py` rest periods (consolidation loop already wired, tuning needed).
-6. **Goals-driven exploration** — integrate `GoalDrivenReward` as composite intrinsic signal alongside RND, regulated by Executive Cortex.
-7. **Add curiosity module registry** — make it trivial to plug new curiosity algorithms into the cortex's adaptive weighting system.
+1. **Goals-driven exploration** — integrate `GoalDrivenReward` as composite intrinsic signal alongside RND, regulated by EC. (Phase 9)
+2. **Spatial memory** — build cognitive map (hippocampus analogue) for navigation with memorized layouts. (Phase 4)
+3. **Compositional concept learning** — extend ConceptFormation: "red square" = "red" ⊗ "square". (Phase 5)
+4. **Multi-step WM verification** — verify 10-step prediction beats persistence baseline. (Phase 6)
+5. **Counterfactual/causal reasoning (D3)** — build causal attribution using ObjectPermanence's slot persistence. (Phase 7)
+6. **Instruction following** — execute novel 3-step compositional commands. (Phase 8)
+7. **Epistemic action** — act to reduce uncertainty (information-seeking). (Phase 10)
+8. **Long-horizon stability** — 200+ episode runs with all cognitive modules enabled.
 
 ---
 

@@ -96,169 +96,20 @@ All cognitive modules from Phases 2.5–10 wired into a single training loop:
 
 ↓
 
-### Phase 3 — Object Understanding
-◐ **Substrate built in Phase 2.7** (ObjectPermanence slot tracking operational). NMI > 0.5 pass bar not yet verified on real agent data.
-
-- Object discovery via temporal coherence (objects move as wholes)
-- Slot attention / object-centric representations
-- Occlusion reasoning: an object behind a wall still exists
-- Object permanence test: tracking through disappearance
-
-**Pass bar:** Clusters in slot space correlate with ground-truth object identity at NMI > 0.5.
-
-**Remaining:** Feed real agent data through the full object→concept pipeline and verify NMI pass bar.
-
-↓
-
-### Phase 4 — Memory
-◐ **Substrate built in Phase 2.7** (4-level Working→Episodic→Semantic→Procedural hierarchy + KnowledgeConsolidation). Spatial memory and temporal memory comparisons remain.
-
-- **Experience Replay → Prioritized Replay → Sequence Replay → Episodic Replay** — hierarchy operational
-- **Spatial Memory** — Genesis doesn't remember where things are. Humans have hippocampus → cognitive map. Genesis should too.
-- **Temporal Memory** — Compare GRU vs LSTM vs Transformer vs Mamba vs RWKV. Find what actually works.
-- Memory compression: abstract repeated patterns into schemas
-- Memory consolidation: replay past experiences during "rest" periods
-
-**Pass bar:** Agent with memory outperforms same-capacity agent without memory on a navigation task with a memorized layout.
-
-**Remaining:** Spatial memory (cognitive map), temporal memory architecture comparison.
-
-↓
-
-### Phase 5 — Concept Formation
-◐ **Substrate built in Phase 2.7** (ConceptFormation pipeline with deferred clustering initialization). Compositional concepts and systematic generalization remain.
-
-- Combine reconstruction + contrastive + object-centric representations
-- Compositional concept learning: "red square" = "red" ⊗ "square"
-- Systematic generalization tests
-
-**Pass bar:** NMI(clusters, context) > 0.5 on the Phase 1 gridworld test.
-
-**Remaining:** Compositional concept learning (parts→objects→categories→relations hierarchy).
-
-↓
-
-### Phase 6 — World Model
-◐ **Substrate built in Phase 2.7** (MultiStepWorldModel with ensemble uncertainty, multi-step rollout, and NaN guards). 10-step prediction pass bar not yet verified.
-
-- **Uncertainty prediction** — know what you don't know (ensemble disagreement operational)
-- **Multi-step prediction** — instead of predict 1 step, predict 10 / 20 / 50 steps (rollout infrastructure built)
-- Rollout consistency: long-horizon predictions stay coherent
-- Imagination: use the world model for planning, not just auxiliary loss
-
-**Pass bar:** World model predicts 10 steps ahead with lower error than a persistence baseline.
-
-**Remaining:** Multi-step verification test, rollout consistency tuning.
-
-↓
-
-### Phase 7 — Reasoning & Planning
-◐ **Substrate built in Phase 2.7** (ReasoningEngine with fixed modus_ponens inference + Planner with NaN fallback). Counterfactual reasoning and causal attribution (D3) remain.
-
-- Causal history buffer (ICN) to track consequence delay
-- Counterfactual reasoning: "what if I had taken a different action?"
-- Goal-directed planning using the world model
-- Tree search in latent space
-
-**Pass bar:** Agent distinguishes correlation from causation in a controlled environment.
-
-**Remaining:** Causal attribution (Phase 1's D3 integration point), counterfactual reasoning, tree search.
-
-↓
-
-### Phase 8 — Language
-◐ **Substrate built in Phase 2.7** (GroundedVocabulary with learn/understand/produce + auto-naming from concepts). Instruction following and multi-agent communication remain.
-
-- Grounded vocabulary: learn that "up" maps to a specific action vector (operational)
-- Instruction following: "go to the blue object" as a compositional command
-- Communicating learned concepts to another agent
-
-**Pass bar:** Agent correctly executes a novel 3-step compositional instruction it has never seen before.
-
-**Remaining:** Compositional instruction following, multi-agent communication.
-
-↓
-
-### Phase 9 — Motivation & Emotion
-⬜ **Deferred.** GoalWeights and GoalDrivenReward modules exist but drives are not yet active in the training loop. Phase 2.7 focused on perception and cognition; motivation integration is the next major integration target.
-
-- Multiple intrinsic rewards: competence, novelty, surprise, predictability
-- Drive competition: which signal to follow when they conflict?
-- Emotional valence: tagging experiences with "good" / "bad" / "surprising"
-- Mood as a persistent state that modulates learning rate and exploration
-
-**Pass bar:** Agent shows distinct exploratory vs. exploitative phases modulated by internal state, not just epsilon decay.
-
-↓
-
-### Phase 10 — Self Model
-◐ **Substrate built in Phase 2.7** (SelfModel with monitoring/confidence/accuracy tracking; EpisodicMemory records own past experiences). Epistemic action and theory of mind remain.
-
-- Episodic memory of own past: "what did I just do?" (operational via EpisodicMemory + consolidation)
-- Self-monitoring: detect when the world model is wrong (operational via SelfModel)
-- Metacognition: "do I know how to do X?"
-- Skill discovery: identifying reusable behavioral primitives
-- Theory of mind: attribute internal states to other agents
-
-**Pass bar:** Agent adjusts its confidence in its own knowledge based on actual accuracy (calibrated metacognition).
-
-**Remaining:** Epistemic action (acting to reduce uncertainty), theory of mind.
-
-↓
-
-### Phase 11 — Lifelong Growth
-⬜
-
-The organism accumulates knowledge across tasks without catastrophic forgetting.
-
-- Progressive network expansion
-- Elastic weight consolidation / synaptic intelligence
-- Curriculum learning: self-directed ordering of challenges
-- Transfer learning to novel environments
-
-**Pass bar:** Agent learns N tasks sequentially with final performance on task 1 comparable to single-task agent.
-
-↓
-
-### Phase 12 — Self Improvement
-⬜
-
-The agent modifies its own architecture, learning algorithm, and reward function.
-
-- Meta-learning: learning to learn
-- Architecture search at agent level
-- Reward design: agent tunes its own intrinsic motivation
-- Self-modification with safety constraints
-
-**Pass bar:** Agent discovers a more efficient learning strategy than its initial configuration.
-
-↓
-
-### Phase 13 — Multi-Agent Society
-⬜
-
-Multiple agents interact, share knowledge, specialize, and form the rudiments of an artificial culture.
-
-- Multi-agent exploration: coverage vs. competition
-- Knowledge transfer: one agent's learned policy seeded into another
-- Role specialization: agents that develop complementary skills
-- Cultural accumulation: knowledge that outlives any single agent
-
-**Pass bar:** A society of N agents explores more efficiently than N independent agents.
-
-↓
-
-### Phase 14 — Physical Embodiment
-⬜
-
-The agent leaves the simulation and interacts with the physical world.
-
-- Real-time sensorimotor loop
-- Robustness to noisy, partial, delayed sensory input
-- Sim-to-real transfer of learned representations
-- Safe exploration in physical space
-
-**Pass bar:** The same architecture that explored a gridworld can explore a real room with minimal modification.
+| Phase | Status | Built in 2.7 | Pass bar | Remaining |
+|-------|--------|--------------|----------|-----------|
+| **3 — Object Understanding** | ◐ | ObjectPermanence slot tracking | NMI(slots, objects) > 0.5 | Feed real agent data → verify NMI bar |
+| **4 — Memory** | ◐ | 4-level hierarchy + KnowledgeConsolidation | Memory-augmented agent beats no-memory agent on navigation | Spatial (cognitive map), temporal arch comparison |
+| **5 — Concept Formation** | ◐ | ConceptFormation pipeline (deferred init) | NMI(clusters, context) > 0.5 | Compositional learning (parts→objects→categories→relations) |
+| **6 — World Model** | ◐ | MultiStepWorldModel + ensemble uncertainty | 10-step pred error < persistence baseline | Verification test, rollout consistency tuning |
+| **7 — Reasoning & Planning** | ◐ | ReasoningEngine + Planner (NaN guards) | Agent distinguishes correlation from causation | Causal attribution (D3), counterfactual, tree search |
+| **8 — Language** | ◐ | GroundedVocabulary (learn/understand/produce) | Novel 3-step compositional instruction executed | Instruction following, multi-agent communication |
+| **9 — Motivation & Emotion** | ⬜ | Modules exist, drives not active in training loop | Exploratory vs exploitative phases from internal state (not epsilon) | Goals-driven exploration, drive competition |
+| **10 — Self Model** | ◐ | SelfModel monitoring + EpisodicMemory | Calibrated metacognition (confidence matches accuracy) | Epistemic action, theory of mind |
+| **11 — Lifelong Growth** | ⬜ | — | N tasks sequentially without forgetting | Progressive expansion, EWC, curriculum |
+| **12 — Self Improvement** | ⬜ | — | Discovers better learning strategy than initial | Meta-learning, arch search, reward design |
+| **13 — Multi-Agent Society** | ⬜ | — | N agents > N independent agents in coverage | Knowledge transfer, role specialization |
+| **14 — Physical Embodiment** | ⬜ | — | Same arch explores real room with minimal mod | Sim-to-real, real-time sensorimotor |
 
 ---
 
