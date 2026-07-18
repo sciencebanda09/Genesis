@@ -69,6 +69,33 @@ Implementation in `core/seal/` (shared infrastructure) + direction-specific modu
 
 ↓
 
+### Phase 2.7 — Systems Integration
+✅ **Complete**
+
+All cognitive modules from Phases 2.5–10 wired into a single training loop:
+
+- **Executive Cortex** — default regulation layer in `train.py`, replacing hardcoded epsilon schedules and curiosity weights
+- **Adaptive memory** — uniform + prioritized replay mixing, per-sample TD error tracking, trend-based regulation
+- **ObjectPermanence** — slot tracking fed from real environment object detections
+- **MultiStepWorldModel** — ensemble world model trained alongside the existing single-step model
+- **ConceptFormation** — hierarchical clustering on real agent hiddens + object features
+- **EpisodicMemory + KnowledgeConsolidation** — episode storage with periodic consolidation at episode boundaries
+- **SelfModel** — metacognitive loss tracking across all subsystems
+- **Agent refactor** — `D1Agent.update()` now accepts optional pre-sampled batch for adaptive memory mixing
+
+**Improvements made during integration:**
+- ReasoningEngine modus_ponens rule now correctly derives consequence predicates (was deriving `inferred_true` instead of `inferred_wet`)
+- ConceptFormation deferred initialization removes dummy-data seeding (previously initialized clusterer with random data)
+- MultiStepWorldModel + Planner: NaN guards on predict/update/evaluate paths
+- ReasoningEngine `explain()` now returns meaningful inference chains
+- `D1Agent.update()` returns per-sample `td_error` for priority updates
+
+**Pass bar:** All 14 verify scripts pass. Training loop runs error-free with all cognitive modules enabled.
+
+⬜ **Remaining:** Goals-driven exploration, curiosity module registry, long-horizon stability (200+ episode runs).
+
+↓
+
 ### Phase 3 — Object Understanding
 ⬜
 

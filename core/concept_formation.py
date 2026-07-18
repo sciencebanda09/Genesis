@@ -39,10 +39,10 @@ class ConceptFormation:
         self._total_assignments = 0
         self._update_buffer = []
         self._update_batch_size = n_concepts * 2
+        self._initialized = False
+        self.rng = np.random.default_rng(42)
         from core.clustering import OnlineKMeans
-        dummy = np.random.randn(max(n_concepts * 2, 10), embed_dim).astype(np.float32)
         self.clusterer = OnlineKMeans(n_clusters=n_concepts, embed_dim=embed_dim)
-        self.clusterer.update_step(dummy)
 
     def embed(self, observation, object_slots=None):
         """Convert observation + optional object info into concept-space features.
@@ -70,6 +70,8 @@ class ConceptFormation:
 
     def assign_concept(self, embedding):
         """Assign an embedding to a discrete concept."""
+        if not self._initialized:
+            return int(self.rng.integers(self.n_concepts)) if hasattr(self, 'rng') else 0
         embedding = np.asarray(embedding, np.float32).reshape(1, -1)
         c = int(self.clusterer.assign(embedding)[0])
         self._concept_counter[c] += 1.0
@@ -79,11 +81,17 @@ class ConceptFormation:
     def update(self, embedding):
         """Update concept prototypes with a new embedding.
         
-        Batches samples internally to meet sklearn's n_samples >= n_clusters requirement.
+        Batches samples internally. First update initializes the clusterer
+        once enough real data has been collected.
         """
         embedding = np.asarray(embedding, np.float32).ravel()
         self._update_buffer.append(embedding)
-        if len(self._update_buffer) >= self._update_batch_size:
+        if not self._initialized and len(self._update_buffer) >= self._update_batch_size:
+            batch = np.stack(self._update_buffer)
+            self.clusterer.update_step(batch)
+            self._initialized = True
+            self._update_buffer = []
+        elif self._initialized and len(self._update_buffer) >= self._update_batch_size:
             batch = np.stack(self._update_buffer)
             self.clusterer.update_step(batch)
             self._update_buffer = []

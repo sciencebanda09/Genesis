@@ -41,6 +41,8 @@ class MultiStepWorldModel:
 
     def predict_step(self, h_batch, actions, ensemble_idx=None):
         h_batch = np.asarray(h_batch, np.float32)
+        if np.any(np.isnan(h_batch)):
+            return np.zeros_like(h_batch) if ensemble_idx is not None else np.zeros((self.n_ensemble, *h_batch.shape))
         onehot = self._action_onehot(actions)
         x = np.concatenate([h_batch, onehot], axis=-1)
         if ensemble_idx is not None:
@@ -116,6 +118,8 @@ class MultiStepWorldModel:
         """
         h_batch = np.asarray(h_batch, np.float32)
         h_next_actual = np.asarray(h_next_actual, np.float32)
+        if np.any(np.isnan(h_batch)) or np.any(np.isnan(h_next_actual)):
+            return float('inf')
         onehot = self._action_onehot(actions)
         x = np.concatenate([h_batch, onehot], axis=-1)
 

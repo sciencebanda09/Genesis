@@ -73,10 +73,11 @@ class D1Agent:
     def store(self, state, action, reward, next_state, done, h_before, h_after):
         self.buffer.add(state, h_before, action, reward, next_state, h_after, done)
 
-    def update(self):
-        batch = self.buffer.sample(self.batch_size)
+    def update(self, batch=None):
         if batch is None:
-            return None
+            batch = self.buffer.sample(self.batch_size)
+            if batch is None:
+                return None
 
         S, NS = batch["states"], batch["next_states"]
         A, R, D = batch["actions"], batch["rewards"], batch["dones"]
@@ -150,6 +151,7 @@ class D1Agent:
 
         return {
             "td_error_mean": float(np.mean(np.abs(td_error))),
+            "td_error": td_error,
             "gamma_eff_mean": float(gamma_e.mean()),
             "delay_loss": delay_loss,
             "q_mean": float(q_sa.mean()),

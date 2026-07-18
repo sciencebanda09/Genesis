@@ -47,6 +47,8 @@ class Planner:
         would use TD(n) returns or Monte Carlo rollouts with the actual reward
         model.
         """
+        if any(np.any(np.isnan(h)) for h in h_trajectory):
+            return -1e9
         if self.value_fn is not None:
             values = np.array([self.value_fn(h) for h in h_trajectory])
             discounts = self.discount ** np.arange(len(values))

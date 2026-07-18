@@ -206,8 +206,7 @@ def run_experiment(env, agent, rnd, icm, wm, cortex,
                             combined = prio_batch
 
                         # Use combined batch for agent update
-                        combined['_cortex_override'] = True
-                        stats = _agent_update_with_batch(agent, combined, env)
+                        stats = agent.update(batch=combined)
                     else:
                         stats = None
                 else:
@@ -274,69 +273,6 @@ def run_experiment(env, agent, rnd, icm, wm, cortex,
             metrics['memory_w_prioritized'].append(mw.get('prioritized', 0.0))
 
     return {k: np.array(v) for k, v in metrics.items()}
-
-
-def _agent_update_with_batch(agent, batch, env):
-    """Run agent.update() with a pre-sampled batch.
-
-    ponytail: reuses agent.update() logic but skips the sample() call.
-    A cleaner approach would refactor agent.update() to accept an optional
-    batch; here we inline the required computation.
-    """
-    S, NS = batch["states"], batch["next_states"]
-    A, R, D = batch["actions"], batch["rewards"], batch["dones"]
-    H, NH = batch["hiddens"], batch["next_hiddens"]
-    W = batch["weights"]
-    B = len(A)
-
-    from core.networks_min import gru_batch_forward
-
-    H_cur = gru_batch_forward(agent.policy_net.gru, S, H)
-    H_next_pol = gru_batch_forward(agent.policy_net.gru, NS, NH)
-    H_next_tgt = gru_batch_forward(agent.target_net.gru, NS, NH)
-
-    feat_pol = agent.policy_net.trunk.forward(H_next_pol)
-    q_next_online = (agent.policy_net.val_head.forward(feat_pol) +
-                      agent.policy_net.adv_head.forward(feat_pol))
-    q_next_online -= q_next_online.mean(axis=-1, keepdims=True)
-    next_actions = q_next_online.argmax(axis=-1)
-
-    feat_tgt = agent.target_net.trunk.forward(H_next_tgt)
-    q_next_tgt = (agent.target_net.val_head.forward(feat_tgt) +
-                  agent.target_net.adv_head.forward(feat_tgt))
-    q_next_tgt -= q_next_tgt.mean(axis=-1, keepdims=True)
-    next_q = q_next_tgt[np.arange(B), next_actions]
-    next_q = np.clip(next_q, -agent.td_target_clip, agent.td_target_clip)
-
-    delta_C = np.zeros(B, np.float32)
-    lam = np.zeros(B, np.float32)
-    target, gamma_e = agent.bellman.td_target(
-        rewards=R, next_q=next_q, delta_C=delta_C, lam=lam,
-        dones=D, h_batch=H_cur, penalty_scale=1.0,
-    )
-
-    feat_cur = agent.policy_net.trunk.forward(H_cur)
-    q_cur = (agent.policy_net.val_head.forward(feat_cur) +
-             agent.policy_net.adv_head.forward(feat_cur))
-    q_cur -= q_cur.mean(axis=-1, keepdims=True)
-    q_sa = q_cur[np.arange(B), A]
-
-    td_error = q_sa - target
-    agent.policy_net.backward_update(S, H, A, td_error, W)
-
-    observed_tau = np.ones(B, np.int32)
-    delay_loss = agent.delay_dist.update_step(H_cur, observed_tau, W)
-
-    agent.target_net.soft_update_from(agent.policy_net, tau=agent.target_update_tau)
-    agent.steps_done += 1
-
-    return {
-        "td_error_mean": float(np.mean(np.abs(td_error))),
-        "td_error": td_error,
-        "gamma_eff_mean": float(gamma_e.mean()),
-        "delay_loss": delay_loss,
-        "q_mean": float(q_sa.mean()),
-    }
 
 
 # ── Experiment 1: Adaptive Curiosity ──────────────────────────────────────

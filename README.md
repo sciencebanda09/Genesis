@@ -358,14 +358,16 @@ See [RESEARCH_ROADMAP.md](RESEARCH_ROADMAP.md) for the full 14-phase plan with d
 **Phase 1 — Birth** ✅ Complete
 **Phase 2 — Perception** ✅ Complete (encoder stable, parity testing remaining)
 **Phase 2.5 — Executive Cortex** ✅ Complete (meta-cognitive regulation layer)
-**Phase 3 — Object Understanding** ⬜
-**Phase 4 — Memory** ⬜
-**Phase 5 — Concept Formation** ⬜
-**Phase 6 — World Model** ⬜
-**Phase 7 — Reasoning & Planning** ⬜
-**Phase 8 — Language** ⬜
-**Phase 9 — Motivation & Emotion** ⬜
-**Phase 10 — Self Model** ⬜
+**Phase 2.6 — SEAL** ✅ Complete (self-adapting layer)
+**Phase 2.7 — Systems Integration** ✅ Complete (all cognitive modules wired into training loop)
+**Phase 3 — Object Understanding** ⬜ (substrate built, object slot tracking operational)
+**Phase 4 — Memory** ⬜ (4-level hierarchy + consolidation built, integration pending)
+**Phase 5 — Concept Formation** ⬜ (hierarchical pipeline built)
+**Phase 6 — World Model** ⬜ (multi-step ensemble built)
+**Phase 7 — Reasoning & Planning** ⬜ (symbolic reasoning + planning built)
+**Phase 8 — Language** ⬜ (grounded vocabulary built)
+**Phase 9 — Motivation & Emotion** ⬜ (multi-drive goals built)
+**Phase 10 — Self Model** ⬜ (metacognitive monitoring built)
 **Phase 11 — Lifelong Growth** ⬜
 **Phase 12 — Self Improvement** ⬜
 **Phase 13 — Multi-Agent Society** ⬜
@@ -374,11 +376,11 @@ See [RESEARCH_ROADMAP.md](RESEARCH_ROADMAP.md) for the full 14-phase plan with d
 ### Immediate next steps
 
 1. **Combine reconstruction + contrastive, retest clustering** — run contrastive projector (consequence-pair version) on top of `h` already shaped by reconstruction. Pass bar: NMI(clusters, context) > 0.062.
-2. **Visual track parity** — run concept-formation tests on visual-track `h`.
+2. **Visual track parity** — run concept-formation tests on visual-track `h` using the integrated training loop.
 3. **Scale up coverage-vs-random test** — larger grid + more seeds for a defensible result.
-4. **Real delay learning (D1 + D3)** — build causal attribution machinery.
-5. **Executive Cortex integration** — make the cortex the default regulation layer in `gridworld_track/train.py` and `visual_track/train_visual.py`. Test long-horizon stability (200+ episodes).
-6. **Adaptive memory in training loops** — integrate prioritized+sequence replay mixing into the main training pipeline.
+4. **Real delay learning (D1 + D3)** — build causal attribution machinery using ObjectPermanence's slot persistence.
+5. **Episodic→Semantic consolidation in training** — consolidate episodic memories during `train.py` rest periods (consolidation loop already wired, tuning needed).
+6. **Goals-driven exploration** — integrate `GoalDrivenReward` as composite intrinsic signal alongside RND, regulated by Executive Cortex.
 7. **Add curiosity module registry** — make it trivial to plug new curiosity algorithms into the cortex's adaptive weighting system.
 
 ---

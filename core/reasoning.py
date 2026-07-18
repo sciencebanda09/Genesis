@@ -56,10 +56,19 @@ class ReasoningEngine:
         self._inference_history = defaultdict(list)
         self._add_default_rules()
 
+    @staticmethod
+    def _modus_ponens(kb, s, p, o):
+        """If (if, s, consequence) in KB and (s, p, o) is a premise, derive consequence."""
+        for (rs, rp, ro), rt in kb.items():
+            if rs == "if" and rp == s and rt > 0.5:
+                premise_val = kb.get((s, p, o), 0.0)
+                if abs(premise_val) > 0.1:
+                    return (f"inferred_{ro}", premise_val)
+        return 0.0
+
     def _add_default_rules(self):
         """Default domain-agnostic inference rules."""
-        self.add_rule("modus_ponens", lambda kb, s, p, o: 
-            kb.get((s, p, o), 0.0) if kb.get(("if", s, p), 0.0) > 0.5 else 0.0)
+        self.add_rule("modus_ponens", ReasoningEngine._modus_ponens)
         self.add_rule("contradiction", lambda kb, s, p, o:
             -kb.get((s, "not", o), 0.0) if (s, "not", o) in kb else None)
 
@@ -97,10 +106,16 @@ class ReasoningEngine:
                 continue
             for rule_name, rule_fn in self.rules:
                 result = rule_fn(self.kb, s, p, o)
-                if result is not None and abs(result) > 0.1:
-                    new_prop = Proposition(s, f"inferred_{p}", o, result)
+                if result is None:
+                    continue
+                if isinstance(result, tuple):
+                    pred_name, truth_val = result
+                else:
+                    pred_name, truth_val = f"inferred_{p}", result
+                if abs(truth_val) > 0.1:
+                    new_prop = Proposition(s, pred_name, o, truth_val)
                     if (new_prop.subject, new_prop.predicate, new_prop.object) not in self.kb:
-                        self.kb[(new_prop.subject, new_prop.predicate, new_prop.object)] = result
+                        self.kb[(new_prop.subject, new_prop.predicate, new_prop.object)] = truth_val
                         self._inference_history[(new_prop.subject, new_prop.predicate, new_prop.object)].append(
                             (rule_name, key))
                         derived.append(new_prop)

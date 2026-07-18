@@ -51,9 +51,13 @@ def test_explain():
     eng = ReasoningEngine()
     eng.tell(Proposition("if", "raining", "wet", 1.0))
     eng.tell(Proposition("raining", "true", None, 1.0))
-    eng.infer()
+    derived = eng.infer()
+    # Should derive ("raining", "inferred_wet", None) via modus_ponens
+    derived_wet = [d for d in derived if d.predicate == "inferred_wet"]
+    assert len(derived_wet) > 0, "modus ponens should derive 'raining inferred_wet'"
     explanation = eng.explain("raining", "inferred_wet")
-    assert len(explanation) > 0, "should have explanation chain"
+    assert any("modus_ponens" in step for step in explanation), \
+        "explanation chain should mention modus_ponens rule"
     print(f"  Explanation: OK ({explanation})")
 
 if __name__ == "__main__":

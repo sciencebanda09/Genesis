@@ -123,6 +123,30 @@ class GridWorld:
         info = {"moved": moved, "interacted_with": interacted_with}
         return self._obs(), 0.0, self.done, info  # extrinsic reward always 0 in Phase 1
 
+    def visible_objects(self, radius=4):
+        """Return objects visible within Manhattan distance `radius` of the agent.
+
+        Returns list of (feature_16, pos_2d, type_int, confidence=1.0)
+        for ObjectPermanence consumption, or empty list if none visible.
+        """
+        y0, x0 = self.pos
+        results = []
+        for y in range(max(0, y0 - radius), min(self.height, y0 + radius + 1)):
+            for x in range(max(0, x0 - radius), min(self.width, x0 + radius + 1)):
+                cell = self.grid[y, x]
+                if cell in (OBJ_A, OBJ_B):
+                    d = abs(y - y0) + abs(x - x0)
+                    if d <= radius:
+                        feat = np.zeros(16, np.float32)
+                        onehot = np.zeros(3, np.float32)
+                        onehot[cell - 2] = 1.0
+                        feat[:3] = onehot
+                        feat[3] = (y - y0) / self.height
+                        feat[4] = (x - x0) / self.width
+                        results.append((feat, np.array([y, x], np.float32),
+                                        int(cell), 1.0))
+        return results
+
     def coverage(self):
         """Fraction of non-wall cells visited so far this episode."""
         total_free = self.height * self.width - int((self.grid == WALL).sum())
