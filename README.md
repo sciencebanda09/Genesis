@@ -24,84 +24,60 @@ This is the start of a long research program. Phase 1 builds the minimal viable 
 
 ```mermaid
 flowchart TB
-    subgraph Executive_Cortex[Executive Cortex — Meta-Cognitive Regulator]
-        EC[Observes internal dynamics\nRegulates: curiosity, memory,\nexploration, learning rates]
+    subgraph EC[Executive Cortex]
+        direction LR
+        ECN[Observes metrics → Regulates:\ncuriosity · memory · exploration · LR]
     end
 
-    subgraph Environment
-        GW[GridWorld: 12x12, 5 actions, 8-dim obs]
-        VGW[VisualGridWorld: 64x64 RGB render]
+    subgraph Env[Environment]
+        GW[GridWorld 12×12]
+        VGW[VisualGridWorld]
     end
 
-    subgraph Agent_Core[Core D1Agent]
-        direction TB
-        GRU[GRUCell dim=32]
-        Trunk[MLP Trunk 64 to 64]
-        VH[Value Head]
-        AH[Advantage Head]
-        DN[DelayDistributionNet tau=1 prior]
-        D1[DelayCorrectedBellman delta_C=0 lam=0]
-        GRU --> Trunk
-        Trunk --> VH & AH
-        DN --> D1
+    subgraph Core[Core D1Agent]
+        GRU[GRU dim=32] --> Trunk[MLP 64→64]
+        Trunk --> VH[Value Head] & AH[Advantage Head]
+        DN[Delay Net] --> D1C[Delay-Corrected Bellman]
     end
 
     subgraph Curiosity[Intrinsic Motivation]
-        RND[RND: predictor-target squared]
-        ICM[ICM: action-conditional prediction error]
-        FUTURE[Future curiosity modules]
+        RND[RND predictor-target]
+        ICM[ICM prediction error]
     end
 
     subgraph Memory[Replay Memory]
-        UNI[Uniform Replay]
-        PRIO[Prioritized Replay]
-        SEQ[Sequence Replay]
+        UNI[Uniform]
+        PRIO[Prioritized]
+        SEQ[Sequence]
     end
 
-    subgraph Concept[Concept-formation track]
-        WM[ForwardWorldModel: ht,at -> ht+1]
-        CP[ContrastiveProjector: InfoNCE on WM features]
-        OK[OnlineKMeans: cluster embeddings]
-        RA[GRUReconstructionTrainer: decode h to obs]
-        WM --> CP --> OK
-        RA -.->|gradient| GRU
+    subgraph Concept[Concept-formation]
+        WM[ForwardWorldModel] --> CP[ContrastiveProj] --> OK[OnlineKMeans]
+        RA[ReconstructionTrainer] -.->|gradient| GRU
     end
 
-    subgraph Visual[Visual track parallel]
-        VE[VisionEncoder CNN + ChannelNorm to latent 128]
-        LWM[LatentWorldModel: latent_t,at -> latent_t+1]
-        VE --> LWM
+    subgraph Visual[Visual Track]
+        VE[VisionEncoder CNN] --> LWM[LatentWorldModel]
     end
 
-    subgraph SEAL[SEAL — Self-Adapting Layer]
-        SP[SelfEditPolicy MLP: metrics -> edit]
-        RS[ReSTEM: outer RL loop]
-        SR[SyntheticRollout: WM-generated h,a,h]
-        SP --> RS
+    subgraph SEAL[Self-Adapting Layer]
+        SP[SelfEditPolicy] --> RS[ReSTEM]
+        SR[SyntheticRollout]
     end
+
+    GW -->|obs| GRU
+    GRU -->|action| GW
+    VGW -->|image| VE
+    VE -->|latent| Core
 
     EC -.->|adaptive weights| Curiosity
     EC -.->|adaptive mixing| Memory
-    EC -.->|adaptive epsilon| AGENT
-    EC -.->|adaptive LR| Curiosity
-    EC -.->|adaptive LR| Concept
-    EC -.->|metrics| AGENT
-    EC -.->|metrics| Curiosity
-    EC -.->|metrics| Concept
+    EC -.->|adaptive epsilon & LR| Core
+    EC -.->|metrics| Core & Curiosity & Concept
 
-    SEAL -.->|edit vector| AGENT
+    SEAL -.->|edit vector| Core
     SEAL -.->|synthetic data| WM
     SEAL -.->|metrics| EC
-
-    GW -->|obs 8-dim| AGENT
-    AGENT -->|action| GW
-    VGW -->|RGB image| VE
-    VE -->|latent| AGENT
-
-    AGENT[Agent Loop] --- Agent_Core
-    AGENT --- Curiosity
-    AGENT --- Concept
-    AGENT --- Memory
 ```
 
 ### Gradient isolation
