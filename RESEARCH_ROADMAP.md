@@ -97,9 +97,7 @@ All cognitive modules from Phases 2.5–10 wired into a single training loop:
 ↓
 
 ### Phase 3 — Object Understanding
-⬜
-
-Entities as persistent objects, not transient pixel clusters. The organism should recognize that an object moved, not just that a different pixel arrived.
+◐ **Substrate built in Phase 2.7** (ObjectPermanence slot tracking operational). NMI > 0.5 pass bar not yet verified on real agent data.
 
 - Object discovery via temporal coherence (objects move as wholes)
 - Slot attention / object-centric representations
@@ -108,14 +106,14 @@ Entities as persistent objects, not transient pixel clusters. The organism shoul
 
 **Pass bar:** Clusters in slot space correlate with ground-truth object identity at NMI > 0.5.
 
+**Remaining:** Feed real agent data through the full object→concept pipeline and verify NMI pass bar.
+
 ↓
 
 ### Phase 4 — Memory
-⬜
+◐ **Substrate built in Phase 2.7** (4-level Working→Episodic→Semantic→Procedural hierarchy + KnowledgeConsolidation). Spatial memory and temporal memory comparisons remain.
 
-Beyond the GRU's recurrent state — dedicated memory architecture.
-
-- **Experience Replay → Prioritized Replay → Sequence Replay → Episodic Replay** — much closer to biological memory
+- **Experience Replay → Prioritized Replay → Sequence Replay → Episodic Replay** — hierarchy operational
 - **Spatial Memory** — Genesis doesn't remember where things are. Humans have hippocampus → cognitive map. Genesis should too.
 - **Temporal Memory** — Compare GRU vs LSTM vs Transformer vs Mamba vs RWKV. Find what actually works.
 - Memory compression: abstract repeated patterns into schemas
@@ -123,12 +121,12 @@ Beyond the GRU's recurrent state — dedicated memory architecture.
 
 **Pass bar:** Agent with memory outperforms same-capacity agent without memory on a navigation task with a memorized layout.
 
+**Remaining:** Spatial memory (cognitive map), temporal memory architecture comparison.
+
 ↓
 
 ### Phase 5 — Concept Formation
-⬜
-
-Build abstract concepts from experience. This is where the contrastive learning and clustering probes from Phase 1 graduate into something that actually works.
+◐ **Substrate built in Phase 2.7** (ConceptFormation pipeline with deferred clustering initialization). Compositional concepts and systematic generalization remain.
 
 - Combine reconstruction + contrastive + object-centric representations
 - Compositional concept learning: "red square" = "red" ⊗ "square"
@@ -136,26 +134,26 @@ Build abstract concepts from experience. This is where the contrastive learning 
 
 **Pass bar:** NMI(clusters, context) > 0.5 on the Phase 1 gridworld test.
 
+**Remaining:** Compositional concept learning (parts→objects→categories→relations hierarchy).
+
 ↓
 
 ### Phase 6 — World Model
-⬜
+◐ **Substrate built in Phase 2.7** (MultiStepWorldModel with ensemble uncertainty, multi-step rollout, and NaN guards). 10-step prediction pass bar not yet verified.
 
-Predict the future using objects and concepts — not just one-step latent prediction.
-
-- **Uncertainty prediction** — know what you don't know
-- **Multi-step prediction** — instead of predict 1 step, predict 10 / 20 / 50 steps
+- **Uncertainty prediction** — know what you don't know (ensemble disagreement operational)
+- **Multi-step prediction** — instead of predict 1 step, predict 10 / 20 / 50 steps (rollout infrastructure built)
 - Rollout consistency: long-horizon predictions stay coherent
 - Imagination: use the world model for planning, not just auxiliary loss
 
 **Pass bar:** World model predicts 10 steps ahead with lower error than a persistence baseline.
 
+**Remaining:** Multi-step verification test, rollout consistency tuning.
+
 ↓
 
 ### Phase 7 — Reasoning & Planning
-⬜
-
-Causal inference: the organism attributes effects to their causes. This is the D3 integration point.
+◐ **Substrate built in Phase 2.7** (ReasoningEngine with fixed modus_ponens inference + Planner with NaN fallback). Counterfactual reasoning and causal attribution (D3) remain.
 
 - Causal history buffer (ICN) to track consequence delay
 - Counterfactual reasoning: "what if I had taken a different action?"
@@ -164,25 +162,25 @@ Causal inference: the organism attributes effects to their causes. This is the D
 
 **Pass bar:** Agent distinguishes correlation from causation in a controlled environment.
 
+**Remaining:** Causal attribution (Phase 1's D3 integration point), counterfactual reasoning, tree search.
+
 ↓
 
 ### Phase 8 — Language
-⬜
+◐ **Substrate built in Phase 2.7** (GroundedVocabulary with learn/understand/produce + auto-naming from concepts). Instruction following and multi-agent communication remain.
 
-Not human-level NLU — grounded language: associating symbols with percepts, actions, and internal states.
-
-- Grounded vocabulary: learn that "up" maps to a specific action vector
+- Grounded vocabulary: learn that "up" maps to a specific action vector (operational)
 - Instruction following: "go to the blue object" as a compositional command
 - Communicating learned concepts to another agent
 
 **Pass bar:** Agent correctly executes a novel 3-step compositional instruction it has never seen before.
 
+**Remaining:** Compositional instruction following, multi-agent communication.
+
 ↓
 
 ### Phase 9 — Motivation & Emotion
-⬜
-
-Beyond pure curiosity — a richer drive system.
+⬜ **Deferred.** GoalWeights and GoalDrivenReward modules exist but drives are not yet active in the training loop. Phase 2.7 focused on perception and cognition; motivation integration is the next major integration target.
 
 - Multiple intrinsic rewards: competence, novelty, surprise, predictability
 - Drive competition: which signal to follow when they conflict?
@@ -194,16 +192,17 @@ Beyond pure curiosity — a richer drive system.
 ↓
 
 ### Phase 10 — Self Model
-⬜
+◐ **Substrate built in Phase 2.7** (SelfModel with monitoring/confidence/accuracy tracking; EpisodicMemory records own past experiences). Epistemic action and theory of mind remain.
 
-The agent models itself: its own capabilities, limitations, current knowledge state, and uncertainty.
-
-- Metacognitive monitoring: "do I know how to do this?"
-- Epistemic humility: confidence-calibrated predictions
+- Episodic memory of own past: "what did I just do?" (operational via EpisodicMemory + consolidation)
+- Self-monitoring: detect when the world model is wrong (operational via SelfModel)
+- Metacognition: "do I know how to do X?"
 - Skill discovery: identifying reusable behavioral primitives
-- Self-image: a persistent representation of "what kind of thing I am"
+- Theory of mind: attribute internal states to other agents
 
-**Pass bar:** Agent that is uncertain about a task seeks information rather than guessing.
+**Pass bar:** Agent adjusts its confidence in its own knowledge based on actual accuracy (calibrated metacognition).
+
+**Remaining:** Epistemic action (acting to reduce uncertainty), theory of mind.
 
 ↓
 

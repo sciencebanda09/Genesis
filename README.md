@@ -360,14 +360,14 @@ See [RESEARCH_ROADMAP.md](RESEARCH_ROADMAP.md) for the full 14-phase plan with d
 **Phase 2.5 — Executive Cortex** ✅ Complete (meta-cognitive regulation layer)
 **Phase 2.6 — SEAL** ✅ Complete (self-adapting layer)
 **Phase 2.7 — Systems Integration** ✅ Complete (all cognitive modules wired into training loop)
-**Phase 3 — Object Understanding** ⬜ (substrate built, object slot tracking operational)
-**Phase 4 — Memory** ⬜ (4-level hierarchy + consolidation built, integration pending)
-**Phase 5 — Concept Formation** ⬜ (hierarchical pipeline built)
-**Phase 6 — World Model** ⬜ (multi-step ensemble built)
-**Phase 7 — Reasoning & Planning** ⬜ (symbolic reasoning + planning built)
-**Phase 8 — Language** ⬜ (grounded vocabulary built)
-**Phase 9 — Motivation & Emotion** ⬜ (multi-drive goals built)
-**Phase 10 — Self Model** ⬜ (metacognitive monitoring built)
+**Phase 3 — Object Understanding** ◐ (substrate built in 2.7, NMI pass bar unverified)
+**Phase 4 — Memory** ◐ (4-level hierarchy built in 2.7, spatial memory remaining)
+**Phase 5 — Concept Formation** ◐ (pipeline built in 2.7, compositional concepts remaining)
+**Phase 6 — World Model** ◐ (multi-step ensemble built in 2.7, 10-step bar unverified)
+**Phase 7 — Reasoning & Planning** ◐ (modules built in 2.7, counterfactual/causal remaining)
+**Phase 8 — Language** ◐ (vocabulary built in 2.7, instruction following remaining)
+**Phase 9 — Motivation & Emotion** ⬜ (deferred — drives not active in training loop)
+**Phase 10 — Self Model** ◐ (monitoring built in 2.7, epistemic action remaining)
 **Phase 11 — Lifelong Growth** ⬜
 **Phase 12 — Self Improvement** ⬜
 **Phase 13 — Multi-Agent Society** ⬜
