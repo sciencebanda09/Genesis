@@ -491,10 +491,27 @@ python -m verify.verify_seal_regulation_matches
 python -m verify.verify_seal_regulation_beats
 python -m verify.verify_seal_synthetic
 
+# Learned downstream-progress meta-control (Paper 1)
+python -m verify.verify_meta_controller
+python -m gridworld_track.train_meta_control --episodes 100 --controller learned --seed 0
+python -m gridworld_track.train_meta_control --episodes 100 --controller learned --seeds 0,1,2 --eval-probe-tasks 3
+python -m gridworld_track.train_meta_control --episodes 100 --controller fixed --seeds 0,1,2
+python -m gridworld_track.train_meta_control --episodes 100 --controller random --seeds 0,1,2
+
 # Coverage comparison
 python -m gridworld_track.compare_coverage
 python -m gridworld_track.sweep_coverage --seeds 10
 ```
+
+`train_meta_control` evaluates noisy regulation proposals on cloned snapshots
+of the current learner, trains the proposal policy on downstream progress,
+and applies only the selected edit to the live learner. The `fixed` and
+`random` modes are matched controls. The `--seeds` form runs independent
+trials and reports train and held-out-layout coverage. The Paper 1 runner
+includes local wall features by default so randomized layouts are
+identifiable; use `--no-transfer-features` only for the original 8-D ablation.
+Candidate evaluation is isolated so rejected proposals cannot modify the live
+agent.
 
 Use `--help` on any script for available arguments.
 

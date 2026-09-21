@@ -36,6 +36,10 @@ class D1Agent:
 
         self.rng = np.random.default_rng(seed)
         self.steps_done = 0
+        # Optional meta-controller multiplier.  Keeping this as state rather
+        # than replacing ``epsilon`` with a closure makes agents safely
+        # deepcopy-able for counterfactual candidate evaluation.
+        self.exploration_multiplier = 1.0
 
         self.policy_net = GRUPolicyNet(state_dim, action_dim, gru_dim, hidden_dim,
                                         n_layers=2, lr=lr_policy, seed=seed)
@@ -53,7 +57,8 @@ class D1Agent:
 
     def epsilon(self):
         frac = min(1.0, self.steps_done / self.eps_decay)
-        return self.eps_start + frac * (self.eps_end - self.eps_start)
+        base = self.eps_start + frac * (self.eps_end - self.eps_start)
+        return float(base * self.exploration_multiplier)
 
     def reset_hidden(self):
         self._h = self.policy_net.zero_state(1)

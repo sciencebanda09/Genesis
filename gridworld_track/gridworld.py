@@ -31,12 +31,16 @@ ACTION_DELTAS = {
 
 class GridWorld:
     def __init__(self, width=12, height=12, n_walls=8, n_obj_a=3, n_obj_b=3,
-                 max_steps=200, seed=0):
+                 max_steps=200, seed=0, local_walls=False):
         self.width, self.height = width, height
         self.max_steps = max_steps
         self.rng = np.random.default_rng(seed)
         self.n_walls, self.n_obj_a, self.n_obj_b = n_walls, n_obj_a, n_obj_b
-        self.state_dim = 8
+        self.local_walls = bool(local_walls)
+        # Base observation is 8-D.  The optional four-bit cardinal obstacle
+        # channel makes randomized-layout transfer identifiable without
+        # exposing the full map.
+        self.state_dim = 12 if self.local_walls else 8
         self.action_dim = len(ACTIONS)
         self.reset()
 
@@ -87,14 +91,23 @@ class GridWorld:
     def _obs(self):
         y, x = self.pos
         dy, dx, onehot = self._nearest_object()
-        return np.array([
+        values = [
             y / self.height,
             x / self.width,
             np.clip(dy / self.height, -1, 1),
             np.clip(dx / self.width, -1, 1),
             *onehot,
             self.step_count / self.max_steps,
-        ], dtype=np.float32)
+        ]
+        if self.local_walls:
+            # [up, down, left, right]; out-of-bounds counts as blocked.
+            for dy_wall, dx_wall in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                wy, wx = y + dy_wall, x + dx_wall
+                blocked = (wy < 0 or wy >= self.height or wx < 0
+                           or wx >= self.width
+                           or self.grid[wy, wx] == WALL)
+                values.append(float(blocked))
+        return np.asarray(values, dtype=np.float32)
 
     def step(self, action: int):
         assert not self.done, "call reset() before stepping a finished episode"
