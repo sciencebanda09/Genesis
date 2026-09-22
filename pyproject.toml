@@ -1,11 +1,12 @@
 [build-system]
 requires = ["setuptools>=64"]
-build-backend = "setuptools.backends._legacy:_Backend"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "genesis"
 version = "0.1.0"
 description = "Intrinsic-curiosity artificial-life agent with verified concept-formation probes"
+readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
     "numpy>=1.26.0",
