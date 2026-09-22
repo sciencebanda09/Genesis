@@ -2,6 +2,9 @@
 /logs/
 *.jsonl
 
+# Manuscript sources, figures, and submission archive
+/paper/
+
 # Python cache
 __pycache__/
 *.pyc
