@@ -126,7 +126,11 @@ class LiveSnapshotEvaluator:
         wm = state["wm"]
         cortex = state["cortex"]
         prioritized = state["prioritized"]
-        obs = self.obs.copy()
+        # ``obs`` is the task-specific reset observation.  In particular, for
+        # held-out probe tasks it must not be replaced by the live task's
+        # observation stored on the evaluator.
+        obs = np.asarray(obs, np.float32).copy()
+        initial_obs = obs.copy()
         _apply_live_edit(agent, physical, self.base_lr)
         start_coverage = float(env.coverage())
         wm_losses = []
@@ -184,6 +188,7 @@ class LiveSnapshotEvaluator:
             "coverage_gain": coverage_gain,
             "moved": int(moved),
             "wm_loss_mean": float(np.mean(wm_losses)) if wm_losses else 0.0,
+            "initial_observation": initial_obs.tolist(),
             "edit": {REGULATION_EDIT_SPEC["param_names"][i]: float(physical[i])
                      for i in range(len(physical))},
         }
