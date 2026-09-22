@@ -56,7 +56,7 @@ def main():
         lambda seed: _FakeInner(seed, seeds), base_seed=100)
     result = controller.outer_step(state, evaluator, n_candidates=5, seed_offset=20)
     assert len(seeds) == 5
-    assert len(set(seeds)) == 5, "candidate evaluations shared a seed/state"
+    assert len(set(seeds)) == 1, "candidate evaluations did not use matched probes"
     assert result["best_edit"].shape == (5,)
     assert np.isfinite(result["update"]["policy_loss"])
     assert len(controller.history) == 1
@@ -103,6 +103,11 @@ def main():
     score, probe_info = evaluator(np.full(5, 0.5, np.float32))
     assert np.isfinite(score)
     assert len(probe_info["task_rewards"]) == 2
+    assert np.allclose(probe_info["task_infos"][0]["initial_observation"], obs)
+    probe_env = GridWorld(max_steps=20, seed=1)
+    expected_probe_obs = probe_env.reset()
+    assert np.allclose(
+        probe_info["task_infos"][1]["initial_observation"], expected_probe_obs)
     assert np.isclose(
         probe_info["robust_score"],
         probe_info["mean_reward"]
