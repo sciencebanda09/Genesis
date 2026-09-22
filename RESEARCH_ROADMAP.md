@@ -48,10 +48,10 @@ A meta-learning layer where the agent learns to generate **self-edits** that con
 Two complementary directions, sharing a shared ReSTEM (rejection sampling + SFT) outer loop:
 
 **Direction A: Meta-Regulation (complements Executive Cortex)**
-- `SelfEditPolicy` MLP maps metric state → regulation parameters `[curiosity_beta, lr_mult, replay_priority_exp, exploration_eps, memory_mix_ratio]`
-- Edits are applied per-window (every K steps); the policy is trained via regression on good edits
-- SEAL sets window-level strategy, Executive Cortex handles step-level dynamics within each window
-- **Verified:** SEAL matches EC heuristic (94.2% ratio, bar ≥ 90%). Beats test within single-seed noise.
+- The Paper 1 runner uses `SelfEditPolicy` to map an eight-dimensional metric state to bounded regulation parameters `[curiosity_beta, lr_mult, replay_priority_exp, exploration_eps, memory_mix_ratio]`.
+- Edits are applied per-window (every K steps); the policy is trained by elite regression on downstream probe scores.
+- The current version evaluates cloned live snapshots on multiple layouts, applies a risk-sensitive score, and protects the incumbent edit with a minimum-improvement margin.
+- The older SEAL verification remains a historical Phase 2.6 result; Paper 1 uses the stronger transfer-aware protocol documented in `PAPER1_MATHEMATICAL_SPEC.md`.
 
 **Direction B: Synthetic Experience Generation**
 - ForwardWorldModel generates synthetic `(h, a, h')` rollouts to augment training data
@@ -66,6 +66,33 @@ Implementation in `core/seal/` (shared infrastructure) + direction-specific modu
 **Verification:** 3 verification scripts with stated pass/fail bars — all passing.
 
 ⬜ **Remaining:** Multi-seed sweeps for statistical significance. Add decoder for synthetic observations (h → obs) to enable policy training on synthetic data. Multi-edit sampling per outer step (as in the original SEAL paper) for faster policy convergence.
+
+#### Paper 1 — TMLR target: Learning to Regulate Learning
+
+The first paper now focuses on downstream-progress meta-control rather than
+general self-improvement claims. The learned controller proposes bounded edits
+to exploration, curiosity, discounting, learning rate, and working-memory
+weight. Each proposal is evaluated on deep-copied learner snapshots, across
+multiple probe layouts, using a risk-sensitive score. The incumbent edit is
+protected unless a candidate exceeds it by a minimum robust-score margin.
+
+This makes the paper's core contribution precise and testable:
+
+- the outer controller regulates the inner learning process online;
+- candidate evaluation is isolated from the live learner;
+- multi-layout scoring measures transfer robustness rather than single-layout
+  overfitting;
+- local-wall features provide a compact task-local representation for the
+  randomized layouts;
+- training coverage, AUC, held-out greedy coverage, held-out exploratory
+  coverage, and the train-to-transfer gap are all reported.
+
+The complete equations and implementation correspondence are in
+[PAPER1_MATHEMATICAL_SPEC.md](PAPER1_MATHEMATICAL_SPEC.md). The current
+three-seed result is development evidence only; the paper result should use a
+fixed ten-seed list, longer training, held-out layouts, confidence intervals,
+and ablations for probe count, risk terms, local-wall features, and incumbent
+protection.
 
 ↓
 
