@@ -14,6 +14,7 @@ This is the start of a long research program. Phase 1 builds the minimal viable 
 - [The story of Phase 1](#the-story-of-phase-1)
 - [What has Phase 1 proven?](#what-has-phase-1-proven)
 - [Research roadmap](#research-roadmap)
+- [Paper 1 mathematical specification](PAPER1_MATHEMATICAL_SPEC.md)
 - [Project structure](#project-structure)
 - [How to run](#how-to-run)
 - [Methodology](#methodology)
@@ -462,6 +463,18 @@ pip install -r requirements.txt
 
 Dependencies added deliberately: `scikit-learn` replaces hand-rolled NMI, clustering, and contingency tables (~100 lines of bug-prone code). `matplotlib` enables plots (curves, coverage, latents) instead of terminal numbers. `tqdm` adds progress bars to training loops — zero API surface, pure quality-of-life.
 
+For the Paper 1 build, install the package and run the specification checks:
+
+```bash
+python -m pip install -e .
+python -m py_compile gridworld_track/gridworld.py gridworld_track/train_meta_control.py verify/verify_meta_controller.py
+python -m verify.verify_meta_controller
+```
+
+The formal build contract, wheel command, implementation mapping, and required
+entry points are maintained in
+[PAPER1_MATHEMATICAL_SPEC.md](PAPER1_MATHEMATICAL_SPEC.md).
+
 ```bash
 # Train the D1+RND agent on the gridworld track
 python -m gridworld_track.train --episodes 200 --seed 0
@@ -498,6 +511,10 @@ python -m gridworld_track.train_meta_control --episodes 100 --controller learned
 python -m gridworld_track.train_meta_control --episodes 100 --controller fixed --seeds 0,1,2
 python -m gridworld_track.train_meta_control --episodes 100 --controller random --seeds 0,1,2
 
+# Paper-ready matched sweep: 10 seeds, longer training, transfer-aware probes
+python -m gridworld_track.train_meta_control --episodes 300 --controller learned --seeds 0,1,2,3,4,5,6,7,8,9 --eval-probe-tasks 3 --risk-penalty 0.5 --worst-case-weight 0.5 --transfer-features
+python -m gridworld_track.train_meta_control --episodes 300 --controller fixed --seeds 0,1,2,3,4,5,6,7,8,9 --eval-probe-tasks 3 --risk-penalty 0.5 --worst-case-weight 0.5 --transfer-features
+
 # Coverage comparison
 python -m gridworld_track.compare_coverage
 python -m gridworld_track.sweep_coverage --seeds 10
@@ -512,6 +529,15 @@ includes local wall features by default so randomized layouts are
 identifiable; use `--no-transfer-features` only for the original 8-D ablation.
 Candidate evaluation is isolated so rejected proposals cannot modify the live
 agent.
+
+For the complete formalization, see
+[PAPER1_MATHEMATICAL_SPEC.md](PAPER1_MATHEMATICAL_SPEC.md). It defines the
+inner learning objective, five-dimensional regulation edit, snapshot-isolated
+counterfactual evaluation, risk-sensitive multi-layout score, incumbent
+protection rule, baselines, transfer-gap metrics, and the recommended
+ten-seed protocol. The current development configuration uses three probe
+tasks, risk penalty 0.5, worst-case weight 0.5, and a minimum robust-score
+improvement of 0.005 before replacing the incumbent edit.
 
 Use `--help` on any script for available arguments.
 
