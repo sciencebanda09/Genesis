@@ -133,8 +133,11 @@ class LearnedMetaController:
         edits = self.propose(metric_state, n_candidates, exploration_std, incumbent)
         rewards = []
         infos = []
-        for index, edit in enumerate(edits):
-            reward, info = evaluator(edit, seed_offset=int(seed_offset) + index * 1000)
+        # Use common random numbers: every candidate sees the same probe-task
+        # seed set, so differences in reward are attributable to the edit
+        # rather than to a candidate-specific layout draw.
+        for edit in edits:
+            reward, info = evaluator(edit, seed_offset=int(seed_offset))
             rewards.append(float(reward))
             infos.append(info)
         rewards = np.asarray(rewards, np.float32)
